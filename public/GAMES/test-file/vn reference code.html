@@ -1,0 +1,2286 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>visual novel</title>
+  <style>
+    /* z index-index(lol):
+      game area: 0
+      game backgrounds: 1
+      background items(interactable elements that are associated with a given background): 2
+      ui buttons(ex. inventory dropdown): 3
+      screen dimmer/item pellets: 4
+      character images: 5
+      text box: 6
+    */
+
+    p {
+      font-size: 16px;
+    }
+    
+    @font-face {
+      font-family: timesnewpixelmedium;
+      src: url('./fonts/times new pixel/timesnewpixel-webfont.woff2') format('woff2'),
+           url('./fonts/times new pixel/timesnewpixel-webfont.woff') format('woff');
+    }
+
+    #gameArea {
+      position: relative;
+      height: 720px;
+      width: 960px;
+      border: solid 5px black;
+      margin: 15px auto;
+      overflow: clip;
+      font-family: timesnewpixelmedium;
+      z-index: 0;
+    }
+
+    #gameBackground {
+      position: relative;
+      z-index: 1;
+    }
+
+    .clickableBox {
+      position: absolute;
+      height: 100px;
+      width: 100px;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .clickableBox:hover {
+      background-color: rgba(178, 202, 255, 0.2);
+    }
+
+    .cameraBox {
+      position: absolute;
+      height: 710px;
+      width: 950px;
+      top: 5px;
+      left: 5px;
+      z-index: 2;
+    }
+
+    .cameraBox:hover {
+      cursor: pointer;
+      background-color: rgba(178, 202, 255, 0.2);
+    }
+
+    .envItem {
+      position: absolute;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .envItem:hover {
+      /* -webkit-filter: drop-shadow(0 0 5px #fff, 0 0 10px yellow); */
+      filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 1px yellow);
+    }
+
+    .gameItem {
+      position: absolute;
+      z-index: 2;
+    }
+
+    .gameItem:hover {
+      /* -webkit-filter: drop-shadow(0 0 5px #fff, 0 0 10px yellow); */
+      filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 1px yellow);
+      cursor: pointer;
+    }
+
+    .itemPellet {
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      z-index: 4;
+    }
+
+    .itemGrabbed {
+      position: absolute;
+      height: 45px;
+      width: 45px;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    #inventoryButton {
+      position: absolute;
+      bottom: 0;
+      left: 4px;
+      height: 84px;
+      width: 94px;
+      background-image: url('./ui/inventory\ button.png');
+      z-index: 3;
+    }
+
+    #inventoryHolder {
+      display: grid;
+      grid-auto-columns: 105px;
+      grid-auto-flow: column dense;
+      padding-left: 15px;
+      padding-top: 5px;
+      width: 100%;
+      height: 105px;
+      background-image: url('./ui/inventory\ holder.png');
+      z-index: 3;
+    }
+
+    #inventoryMenu {
+      position: absolute;
+      top: -110px;
+      transition: top 0.3s ease-in-out;
+      height: 194px;
+      width: 960px;
+      z-index: 3;
+    }
+
+    .inventoryItem {
+      width: 90px;
+      height: 90px;
+      filter: drop-shadow(0 0 2px #fff);
+      cursor: pointer;
+    }
+
+    #dimmer {
+      position: absolute;
+      top: 0;
+      height: 720px;
+      width: 960px;
+      background-color: black;
+      opacity: 0;
+      transition: opacity 0.28s ease-out;
+      z-index: 4;
+    }
+
+    .imageAnimation {
+      position: absolute;
+      visibility: hidden;
+      /* transition: bottom 0.5s ease-in, right 0.5s ease-out; */
+      bottom: 200px;
+      right: 0px;
+      filter: brightness(100%);
+      z-index: 5;
+    }
+
+    #textBox {
+      position: absolute;
+      left: 20px;
+      bottom: 20px;
+      height: 190px;
+      width: 920px;
+      /* border: solid 5px black; */
+      background-image: url('./ui/text\ box.png');
+      padding: 0;
+      z-index: 6;
+    }
+
+    #textBox p {
+      color: #fff;
+      text-shadow: 0 2px #804a91;
+      font-size: 32px;
+      margin: 16px 30px;
+    }
+
+    .textButton {
+      position: absolute;
+      bottom: 20px;
+      right: 34px;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameArea">
+    <div id="gameBackground"> <!-- element which all of the background stuff is stored. includes buttons to other rooms and stuff -->
+      <!-- testing rooms-->
+      <div id="BGtestRoom" style="visibility: hidden;"> <!-- default testing room -->
+        <div id="clickMe" class="clickableBox" style="top: 333px; left: 25px;">test images</div>
+        <div id="anotherScreen" class="clickableBox" style="top: 200px; left: 45px;">the feild</div>
+        <div id="getToScene" class="clickableBox" style="top: 130px; left: 300px;">cutscene test room</div>
+      </div>
+      
+      <div id="BGfeild" style="visibility: hidden;"> <!-- grass feild room -->
+        <img src="./BGfeild.png" style="position: absolute;">
+        <div id="feildReturn" class="clickableBox" style="top: 200px; left: 45px;">RETURN</div>
+        <img id="TESTitem" class="gameItem" src="./apple.png" style="top: 300px; left: 500px; height: 300px; width: 300px;">
+        <img id="feildSheep" class="envItem" src="./sheep.png" style="width: 300px; height: 225px; top: 350px; left: 150px;">
+      </div>
+
+      <div id="BGscene" style="visibility: hidden;"> <!-- for testing cutscenes -->
+        <img class="envItem" src="./orange.jpg" style="width: 100px; height: 100px;">
+      </div>
+
+
+      <!-- in game rooms -->
+      <!-- main menu -->
+      <div id="BGmainMenu" style="visibility: hidden; background-color: black;">
+        <img src="./backgrounds/space filler.png" style="position: absolute;">
+        <img src="./ui/main menu assetes/MMoverlay.png" style="position: absolute;">
+        <div id="MMbutton1" style="position: absolute; left: 0; top: 395px; height: 42px; width: 960px;">
+          <img id="MMhighlight1" src="./ui/main menu assetes/MMhighlight_Y389.png" style="opacity: 0; transition: opacity 0.5s ease-in-out;">
+          <img id="MMnewGame" src="./ui/main menu assetes/MMnewGame_X110_Y401.png" style="filter: brightness(100%); position: absolute; width: auto; height: auto; left: 110px; top: 6px; transition: left 0.5s ease-in-out;">
+        </div>
+        <div id="MMbutton2" style="position: absolute; left: 0; top: 437px; height: 42px; width: 960px;">
+          <img id="MMhighlight2" src="./ui/main menu assetes/MMhighlight_Y389.png" style="opacity: 0; transition: opacity 0.5s ease-in-out;">
+          <img id="MMexit" src="./ui/main menu assetes/MMexit_X110_Y434.png" style="filter: brightness(100%); position: absolute; width: auto; height: auto; left: 110px; top: 6px; transition: left 0.5s ease-in-out;">
+        </div>
+      </div>
+
+      <!-- intro cutscene room -->
+      <div id="BGintroCutscene" style="visibility: hidden;">
+        <img src="./backgrounds/space filler.png" style="position: absolute;">
+        <p id="SceneIntroTextDump" style="position: absolute; left: 55px; top: 10px; width: 850px; height: auto; font-size: 36px; text-align: center; color: white">
+          The year is 2032. The thriving city of New Repro in the present stands as a landmark to the advancement of modern technology, a hub where creatives and collaborators
+          work feverishly together to continue pushing the boundaries of what's possible. Old age magic redefined by new age scientific thought, conceptions are toyed with and become
+          fluid as ideas change and build upon themselves. Streets flood with foot traffic and carbon emissions, opportunity and conflict presenting themselves to its denizens like
+          virtual particles. Deep underground beneath the streets and skyscrapers and activity above lie ancient structures of vast tunnels and forgotten architecture, writhing and
+          churning away, carrying pathogens and secrets within its caverns. People in this city sometimes get lost and disappear into these tunnels, as if swallowed up by the earth
+          itself.
+          
+          <br><br> This is a tale about two of these people
+        </p>
+      </div>
+
+      <!-- credits/final room -->
+      <div id="BGcredits" style="visibility: hidden;">
+        <img src="./backgrounds/space filler.png" style="position: absolute;">
+
+        <div id="CCcredits" style="visibility: hidden;">
+          <img id="CCicons" src="./ui/credits.gif" style="position: absolute;">
+          <p id="CCbanner" style="position: absolute; left: 300px; top: -50px; font-size: 80px; color: white;">A game by:</p>
+          <div style="position: absolute; left: 50px; top: 435px; width: 860px; height: auto; display: flex; flex-direction: row; justify-content: space-around;">
+            <p id="CCcredit1" style="text-align: center; font-size: 38px; color: white; width: 200px;">
+              Oolex<br>
+              <span style="color: gray; font-size: 25px;">-background artist(shading)</span>
+            </p> <!-- put a list for individual items they did-->
+            <p id="CCcredit2" style="text-align: center; font-size: 38px; color: white; width: 460px;">
+              Gabe<br>
+              <span style="color: gray; font-size: 25px;">-background artist(coloring)</span><br>
+              <span style="color: gray; font-size: 25px;">-character designing</span>
+            </p>
+            <p id="CCcredit3" style="text-align: center; font-size: 38px; color: white; width: 200px;">
+              Cece<br>
+              <span style="color: gray; font-size: 25px;">-writing</span><br>
+              <span style="color: gray; font-size: 25px;">-coding</span><br>
+              <span style="color: gray; font-size: 25px;">-character designs</span><br>
+              <span style="color: gray; font-size: 25px;">-art/animation</span><br>
+            </p>
+          </div>
+        </div>
+        
+        
+        <div id="CCmoreCredits" style="visibility: hidden;">
+          <p style="position: absolute; left: 215px; top: -50px; font-size: 80px; color: white;">Additonal Assetes</p>
+          <a href="https://www.pentacom.jp/pentacom/bitfontmaker2/gallery/?id=1890" style="position: absolute; top: 330px; left: 210px; text-align: center; font-size: 38px; color: white;">"Times New Pixel" font by IshPassion</a>
+          <a href="https://www.youtube.com/watch?v=OsSQONAJRm4" style="position: absolute; top: 380px; left: 200px; text-align: center; font-size: 38px; color: white;">Moiré (Piano & Organ) by Jan Jelinek</a>
+        </div>
+        <!-- maybe a replay prompt that just refreshes the page -->
+      </div>
+
+      <!-- boiler room -->
+      <div id="BGboilerLowerPov" style="visibility: hidden;">
+        <img src="./backgrounds/boiler room lower pov/BGboilerlowerPov.png" style="position: absolute;">
+        <div id="SceneBoilerLowerPovNavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneBoilerLowerPovCameraBox" class="cameraBox" style="visibility: hidden;"></div>
+      </div>
+
+      <div id="BGboilerPov1" style="visibility: hidden;">
+        <img src="./backgrounds/boiler room pov1/BGboilerPov1.png" style="position: absolute;">
+        <div id="SceneBoilerPov1NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneBoilerPov1CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneBoilerPov1Winger" class="envItem" src="./backgrounds/boiler room pov1/SceneBoilerPov1Winger_X410_Y219.png" style="height: auto; width: auto; left: 410px; top: 219px;">
+      </div>
+
+      <div id="BGboilerPov2" style="visibility: hidden;">
+        <img src="./backgrounds/boiler room pov2/BGboilerPov2.png" style="position: absolute;">
+        <div id="SceneBoilerPov2NavigatorLeft" class="clickableBox" style="visibility: hidden; width: 100px; height: 710px; left: 5px; top: 5px;"></div>
+        <div id="SceneBoilerPov2CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneBoilerPov2Key" class="gameItem" src="./backgrounds/boiler room pov2/SceneBoilerPov2Key_X454_Y304.png" style="height: auto; width: auto; left: 454px; top: 304px;">
+      </div>
+
+      <!-- electrical -->
+      <div id="BGelec" style="visibility: hidden;">
+        <img src="./backgrounds/electrical/BGelec.png" style="position: absolute;">
+        <div id="SceneElecNavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneElecCameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneElecFuseBox" class="envItem" src="./backgrounds/electrical/SceneElecFuseBox_X288_Y283.png" style="height: auto; width: auto; left: 288px; top: 283px;">
+      </div>
+
+      <!-- hall a -->
+      <div id="BGhallApov1" style="visibility: hidden;">
+        <img src="./backgrounds/hall a pov1/BGhallApov1.png" style="position: absolute;">
+        <div id="SceneHallApov1NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneHallApov1CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneHallApov1Door1" class="envItem" src="./backgrounds/hall a pov1/SceneHallApov1Door1_X176_Y128.png" style="height: auto; width: auto; left: 176px; top: 128px;">
+        <img id="SceneHallApov1Door2" class="envItem" src="./backgrounds/hall a pov1/SceneHallApov1Door2_X590_Y164.png" style="height: auto; width: auto; left: 590px; top: 164px;">
+      </div>
+
+      <div id="BGhallApov2" style="visibility: hidden;">
+        <img src="./backgrounds/hall a pov2/BGhallApov2.png" style="position: absolute;">
+        <div id="SceneHallApov2NavigatorCenter" class="clickableBox" style="width: 298px; height: 235px; left: 310px; top: 168px;"></div>
+        <div id="SceneHallApov2NavigatorRight" class="clickableBox" style="width: 100px; height: 710px; left: 855px; top: 5px;"></div>
+        <div id="SceneHallApov2CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneHallApov2Door1" class="envItem" src="./backgrounds/hall a pov2/SceneHallApov2Door1_X237_Y188.png" style="height: auto; width: auto; left: 237px; top: 188px;">
+      </div>
+
+      <div id="BGhallApov3" style="visibility: hidden;">
+        <img src="./backgrounds/hall a pov3/BGhallApov3.png" style="position: absolute;">
+        <div id="SceneHallApov3NavigatorCenter" class="clickableBox" style="width: 382px; height: 300px; left: 215px; top: 175px;"></div>
+        <div id="SceneHallApov3NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneHallApov3CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneHallApov3Door1" class="envItem" src="./backgrounds/hall a pov3/SceneHallApov3Door1_X723_Y107.png" style="width: auto; height: auto; left: 723px; top: 107px;">
+        <img id="SceneHallApov3Poster" class="envItem" src="./backgrounds/hall a pov3/SceneHallApov3Poster_X103_Y305.png" style="width: auto; height: auto; left: 103px; top: 305px;">
+      </div>
+
+      <!-- hall b -->
+      <div id="BGhallBpov1" style="visibility: hidden;">
+        <img src="./backgrounds/hall b pov1/BGhallBpov1.png" style="position: absolute;">
+        <div id="SceneHallBpov1NavigatorLeft" class="clickableBox" style="width: 100px; height: 710px; left: 5px; top: 5px;"></div>
+        <div id="SceneHallBpov1NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneHallBpov1CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneHallBpov1Door1" class="envItem" src="./backgrounds/hall b pov1/SceneHallBpov1Door1_X419_Y62.png" style="width: auto; height: auto; left: 419px; top: 62px;">
+      </div>
+
+      <div id="BGhallBpov2" style="visibility: hidden;">
+        <img src="./backgrounds/hall b pov2/BGhallBpov2.png" style="position: absolute;">
+        <div id="SceneHallBpov2NavigatorCenter" class="clickableBox" style="width: 290px; height: 250px; left: 335px; top: 175px;"></div>
+        <div id="SceneHallBpov2NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneHallBpov2CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneHallBpov2Door1" class="envItem" src="./backgrounds/hall b pov2/SceneHallBpov2Door1_X739_Y79.png" style="width: auto; height: auto; left: 739px; top: 79px;">
+      </div>
+
+      <div id="BGhallBpov3" style="visibility: hidden;">
+        <img src="./backgrounds/hall b pov3/BGhallBpov3.png" style="position: absolute;">
+        <div id="SceneHallBpov3NavigatorLeft" class="clickableBox" style="width: 100px; height: 710px; left: 5px; top: 5px;"></div>
+        <div id="SceneHallBpov3CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneHallBpov3Door1" class="envItem" src="./backgrounds/hall b pov3/SceneHallBpov3Door1_X575_Y171.png" style="width: auto; height: auto; left: 575px; top: 171px;">
+      </div>
+
+      <!-- L hall -->
+      <div id="BGLhallPov1" style="visibility: hidden;">
+        <img src="./backgrounds/L hall pov1/BGlHallPov1.png" style="position: absolute;">
+        <div id="SceneLHallPov1NavigatorRight" class="clickableBox" style="width: 100px; height: 710px; left: 855px; top: 5px;"></div>
+        <div id="SceneLHallPov1CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneLhallPov1Door1" class="envItem" src="./backgrounds/L hall pov1/SceneLhallPov1Door1_X127_Y75.png" style="width: auto; height: auto; left: 127px; top: 75px;">
+        <img id="SceneLhallPov1Door2" class="envItem" src="./backgrounds/L hall pov1/SceneLhallPov1Door2_X492_Y129.png" style="width: auto; height: auto; left: 492px; top: 129px;">
+      </div>
+
+      <div id="BGLhallPov2" style="visibility: hidden;">
+        <img src="./backgrounds/L hall pov2/BGlHallPov2.png" style="position: absolute;">
+        <div id="SceneLHallPov2CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneLhallPov2Crate" class="envItem" src="./backgrounds/L hall pov2/SceneLhallPov2Crate_X70_Y466.png" style="width: auto; height: auto; left: 70px; top: 466px;">
+        <img id="SceneLhallPov2Door1" class="envItem" src="./backgrounds/L hall pov2/SceneLhallPov2Door1_X532_Y89.png" style="width: auto; height: auto; left: 532px; top: 89px;">
+        <div id="SceneLHallPov2NavigatorLeft" class="clickableBox" style="width: 100px; height: 710px; left: 5px; top: 5px;"></div>
+        <div id="SceneLHallPov2NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+      </div>
+
+      <!-- left hall -->
+      <div id="BGleftHallPov1" style="visibility: hidden;">
+        <img src="./backgrounds/left hall pov1/BGleftHallPov1.png" style="position: absolute;">
+        <div id="SceneLeftHallPov1NavigatorLeft" class="clickableBox" style="width: 100px; height: 710px; left: 5px; top: 5px;"></div>
+        <div id="SceneLeftHallPov1NavigatorCenter" class="clickableBox" style="width: 380px; height: 270px; left: 150px; top: 140px;"></div>
+        <div id="SceneLeftHallPov1CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+      </div>
+
+      <div id="BGleftHallPov2" style="visibility: hidden;">
+        <img src="./backgrounds/left hall pov2/BGleftHallPov2.png" style="position: absolute;">
+        <div id="SceneLeftHallPov2NavigatorRight" class="clickableBox" style="width: 100px; height: 710px; left: 855px; top: 5px;"></div>
+        <div id="SceneLeftHallPov2NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneLeftHallPov2CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneLeftHallPov2Door1" class="envItem" src="./backgrounds/left hall pov2/SceneLeftHallPov2Door1_X177_Y94.png" style="width: auto; height: auto; left: 118px; top: 94px;">
+        <img id="SceneLeftHallPov2Door2" class="envItem" src="./backgrounds/left hall pov2/SceneLeftHallPov2Door2_X668_Y151.png" style="width: auto; height: auto; left: 668px; top: 151px;">
+      </div>
+
+      <div id="BGleftHallPov3" style="visibility: hidden;">
+        <img src="./backgrounds/left hall pov3/BGleftHallPov3.png" style="position: absolute;">
+        <div id="SceneLeftHallPov3NavigatorLeft" class="clickableBox" style="width: 100px; height: 710px; left: 5px; top: 5px;"></div>
+        <div id="SceneLeftHallPov3NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneLeftHallPov3CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneLeftHallPov3Door1" class="envItem" src="./backgrounds/left hall pov3/SceneLeftHallPov3Door1_X80_Y161.png" style="width: auto; height: auto; left: 80px; top: 161px;">
+        <img id="SceneLeftHallPov3Door2" class="envItem" src="./backgrounds/left hall pov3/SceneLeftHallPov3Door2_X724_Y169.png" style="width: auto; height: auto; left: 724px; top: 169px;">
+      </div>
+
+      <!-- living spaces -->
+      <div id="BGlivingSpaceA" style="visibility: hidden;">
+        <img src="./backgrounds/living space a/BGlivingSpaceA.png" style="position: absolute;">
+        <div id="SceneLivingSpaceANavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneLivingSpaceACameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneLivingSpaceAcard" class="PLACEHOLDER" src="./backgrounds/living space a/SceneLivingSpaceAcard_X287_Y383.png" style="position: absolute; width: auto; height: auto; left: 287px; top: 383px;">
+        <img id="SceneLivingSpaceAfuses" class="envItem" src="./backgrounds/living space a/SceneLivingSpaceAfuses_X541_Y543.png" style="width: auto; height: auto; left: 541px; top: 543px;">
+        <img id="SceneLivingSpaceAlaptop" class="envItem" src="./backgrounds/living space a/SceneLivingSpaceAlaptop_X185_Y267.png" style="width: auto; height: auto; left: 185px; top: 267px;">
+      </div>
+
+      <div id="BGlivingSpaceD" style="visibility: hidden;">
+        <img src="./backgrounds/living space d/BGlivingSpaceD.png" style="position: absolute;">
+        <div id="SceneLivingSpaceDNavigatorLeft" class="clickableBox" style="width: 100px; height: 710px; left: 5px; top: 5px;"></div>
+        <div id="SceneLivingSpaceDCameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneLivingSpaceDbed" class="envItem" src="./backgrounds/living space d/SceneLivingSpaceDbed_X18_Y357.png" style="width: auto; height: auto; left: 18px; top: 357px;">
+        <img id="SceneLivingSpaceDdoor1" class="envItem" src="./backgrounds/living space d/SceneLivingSpaceDdoor1_X696_Y366.png" style="visibility: hidden; width: auto; height: auto; left: 696px; top: 366px;">
+        <img id="SceneLivingSpaceDchairA" class="envItem" src="./backgrounds/living space d/SceneLivingSpaceDchairA_X739_Y363.png" style="width: auto; height: auto; left: 739px; top: 363px;">
+        <img id="SceneLivingSpaceDchairB" src="./backgrounds/living space d/SceneLivingSpaceDchairB_X921_Y372.png" style="visibility: hidden; position: absolute; width: auto; height: auto; left: 921px; top: 372px;">
+      </div>
+
+      <!-- right hall -->
+      <div id="BGrightHallPov1" style="visibility: hidden;">
+        <img src="./backgrounds/right hall pov1/BGrightHallPov1.png" style="position: absolute;">
+        <div id="SceneRightHallPov1NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneRightHallPov1CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneRightHallPov1Door1" class="envItem" src="./backgrounds/right hall pov1/SceneRightHallpov1Door1_X372_Y136.png" style="width: auto; height: auto; left: 372px; top: 136px;">
+        <img id="SceneRightHallPov1Key" class="envItem" src="./backgrounds/right hall pov1/SceneRightHallPov1Key_X400_Y566.png" style="width: auto; height: auto; left: 400px; top: 566px;">
+      </div>
+
+      <div id="BGrightHallPov2" style="visibility: hidden;">
+        <img src="./backgrounds/right hall pov2/BGrightHallPov2.png" style="position: absolute;">
+        <div id="SceneRightHallPov2NavigatorCenter" class="clickableBox" style="visibility: hidden; width: 210px; height: 210px; left: 372px; top: 185px;"></div>
+        <div id="SceneRightHallPov2NavigatorBottom" class="clickableBox" style="visibility: hidden; width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneRightHallPov2CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneRightHallPov2AlabasterPeek" class="envItem" src="./backgrounds/right hall pov2/SceneRightHallPov2AlabasterPeek_X457_Y244.png" style="width: auto; height: auto; left: 457px; top: 244px;">
+      </div>
+
+      <div id="BGrightHallPov3" style="visibility: hidden;">
+        <img src="./backgrounds/right hall pov3/BGrightHallPov3.png" style="position: absolute;">
+        <div id="SceneRightHallPov3NavigatorRight" class="clickableBox" style="width: 100px; height: 710px; left: 855px; top: 5px;"></div>
+        <div id="SceneRightHallPov3CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneRightHallPov3Door1" class="envItem" src="./backgrounds/right hall pov3/SceneRightHallPov3Door1_X148_Y155.png" style="width: auto; height: auto; left: 148px; top: 155px;">
+        <img id="SceneRightHallPov3Door2" class="envItem" src="./backgrounds/right hall pov3/SceneRightHallPov3Door2_X529_Y324.png" style="width: auto; height: auto; left: 529px; top: 324px;">
+      </div>
+
+      <div id="BGrightHallPov4" style="visibility: hidden;">
+        <img src="./backgrounds/right hall pov4/BGrightHallPov4.png" style="position: absolute;">
+        <div id="SceneRightHallPov4NavigatorCenter" class="clickableBox" style="width: 200px; height: 190px; left: 500px; top: 205px;"></div>
+        <div id="SceneRightHallPov4CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneRightHallPov4Door1" class="envItem" src="./backgrounds/right hall pov4/SceneRightHallPov4Door1_X25_Y299.png" style="width: auto; height: auto; left: 25px; top: 299px;">
+      </div>
+
+      <div id="BGrightHallU" style="visibility: hidden;">
+        <img src="./backgrounds/rendered backgrounds/right hall unique render.png" style="position: absolute;">
+      </div>
+
+      <!-- stairs A -->
+      <div id="BGstairsAexit" style="visibility: hidden;">
+        <img src="./backgrounds/stairs a exit/BGstairsAexit.png" style="position: absolute;">
+        <div id="SceneStairsAexitCameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneStairsAexitDoor1" class="envItem" src="./backgrounds/stairs a exit/SceneStairsAexitDoor1_X40_Y167.png" style="width: auto; height: auto; left: 40px; top: 167px;">
+        <img id="SceneStairsAexitDoor2" class="envItem" src="./backgrounds/stairs a exit/SceneStairsAexitDoor2_X711_Y131.png" style="width: auto; height: auto; left: 711px; top: 131px;">
+      </div>
+
+      <div id="BGstairsApov1" style="visibility: hidden;">
+        <img src="./backgrounds/stairs a pov1/BGstairsApov1.png" style="position: absolute;">
+        <div id="SceneStairsApov1NavigatorRight" class="clickableBox" style="width: 100px; height: 710px; left: 855px; top: 5px;"></div>
+        <div id="SceneStairsApov1CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id='SceneStairsApov1Door1' class="envItem" src="./backgrounds/stairs a pov1/SceneStairsApov1Door1_X90_Y135.png" style="width: auto; height: auto; left: 90px; top: 135px;">
+      </div>
+
+      <div id="BGstairsA2pov1" style="visibility: hidden;">
+        <img src="./backgrounds/stairs a pov1/BGstairsA2pov1.png" style="position: absolute;">
+        <div id="SceneStairsA2pov1NavigatorRight" class="clickableBox" style="width: 100px; height: 710px; left: 855px; top: 5px;"></div>
+        <div id="SceneStairsA2pov1CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id='SceneStairsA2pov1Door1' class="envItem" src="./backgrounds/stairs a pov1/SceneStairsApov1Door1_X90_Y135.png" style="width: auto; height: auto; left: 90px; top: 135px;">
+      </div>
+
+      <div id="BGstairsApov2" style="visibility: hidden;">
+        <img src="./backgrounds/stairs a pov2/BGstairsApov2.png" style="position: absolute;">
+        <div id="SceneStairsApov2NavigatorLeft" class="clickableBox" style="width: 100px; height: 710px; left: 5px; top: 5px;"></div>
+        <div id="SceneStairsApov2CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneStairsApov2stairs" class="envItem" src="./backgrounds/stairs a pov2/SceneStairsA2pov2stairs_X124_Y247.png" style="width: auto; height: auto; left: 124px; top: 247px;">
+        <img id="SceneStairsApov2door1" class="envItem" src="./backgrounds/stairs a pov2/SceneStairsApov2door1_X806_Y144.png" style="width: auto; height: auto; left: 806px; top: 144px;">
+      </div>
+
+      <div id="BGstairsA2pov2" style="visibility: hidden;">
+        <img src="./backgrounds/stairs a pov2/BGstairsA2pov2.png" style="position: absolute;">
+        <div id="SceneStairsA2pov2NavigatorLeft" class="clickableBox" style="width: 100px; height: 710px; left: 5px; top: 5px;"></div>
+        <div id="SceneStairsA2pov2CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneStairsA2pov2stairs" class="envItem" src="./backgrounds/stairs a pov2/SceneStairsA2pov2stairs_X124_Y247.png" style="width: auto; height: auto; left: 124px; top: 247px;">
+      </div>
+
+      <!-- top hall -->
+      <div id="BGtopHallHighPov1" style="visibility: hidden;">
+        <img src="./backgrounds/top hall high pov1/BGtopHallHighPov1.png" style="position: absolute;">
+        <div id="SceneTopHallHighPov1NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneTopHallHighPov1CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneTopHallHighPov1Door1" class="envItem" src="./backgrounds/top hall high pov1/SceneTopHallHighPov1Door1_X223_Y97.png" style="width: auto; height: auto; left: 223px; top: 97px;">
+        <img id="SceneTopHallHighPov1Rail" class="envItem" src="./backgrounds/top hall high pov1/SceneTopHallHighPov1Rail_X489_Y329.png" style="width: auto; height: auto; left: 489px; top: 329px;">
+      </div>
+
+      <div id="BGtopHallHighPov2" style="visibility: hidden;">
+        <img src="./backgrounds/top hall high pov2/BGtopHallHighPov2.png" style="position: absolute;">
+        <div id="SceneTopHallHighPov2NavigatorCenter" class="clickableBox" style="width: 480px; height: 390px; left: 330px; top: 200px;"></div>
+        <div id="SceneTopHallHighPov2NavigatorBottom" class="clickableBox" style="width: 600px; height: 70px; left: 180px; top: 645px;"></div>
+        <div id="SceneTopHallHighPov2CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneTopHallHighPov2Eye" class="envItem" src="./backgrounds/top hall high pov2/SceneTopHallHighPov2Eye_X395_Y62.png" style="height: auto; width: auto; left: 395px; top: 62px;">
+      </div>
+
+      <div id="BGtopHallLowPov1" style="visibility: hidden;">
+        <img src="./backgrounds/top hall low pov1/BGtopHallLowPov1.png" style="position: absolute;">
+        <div id="SceneTopHallLowPov1NavigatorLeft" class="clickableBox" style="width: 100px; height: 710px; left: 5px; top: 5px;"></div>
+        <div id="SceneTopHallLowPov1CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneTopHallLowPov1Door1" class="envItem" src="./backgrounds/top hall low pov1/SceneTopHallLowPov1Door1_X226_Y90.png" style="width: auto; height: auto; left: 226px; top: 90px;">
+        <img id="SceneTopHallLowPov1Rail" class="envItem" src="./backgrounds/top hall low pov1/SceneTopHallLowPov1Rail_X637_Y30.png" style="width: auto; height: auto; left: 637px; top: 30px;">
+      </div>
+
+      <div id="BGtopHallLowPov2" style="visibility: hidden;">
+        <img src="./backgrounds/top hall low pov2/BGtopHallLowPov2.png" style="position: absolute;">
+        <div id="SceneTopHallLowPov2NavigatorRight" class="clickableBox" style="width: 100px; height: 710px; left: 855px; top: 5px;"></div>
+        <div id="SceneTopHallLowPov2CameraBox" class="cameraBox" style="visibility: hidden;"></div>
+        <img id="SceneTopHallLowPov2Door1" class="envItem" src="./backgrounds/top hall low pov2/SceneTopHallLowPov2Door1_X95_Y63.png" style="width: auto; height: auto; left: 95px; top: 63px;">
+        <img id="SceneTopHallLowPov2Door2" class="envItem" src="./backgrounds/top hall low pov2/SceneTopHallLowPov2Door2_X728_Y171.png" style="width: auto; height: auto; left: 728px; top: 171px;">
+      </div>
+    </div>
+
+
+    <div> <!-- images, should be invisible by default -->
+      <img src="./apple.png" width="300px" height="300px" id="img1" class="imageAnimation">
+      <img src="./orange.jpg" width="300px" height="300px" id="img2" class="imageAnimation">
+
+      <!-- winger -->
+      <img src="./character images/wingerAngry.png" id="wingerAngry" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+      <img src="./character images/wingerConfusion.png" id="wingerConfusion" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+      <img src="./character images/wingerDiscomfort.png" id="wingerDiscomfort" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+      <img src="./character images/wingerDisgust.png" id="wingerDisgust" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+      <img src="./character images/wingerHappy.png" id="wingerHappy" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+      <img src="./character images/wingerJudgement.png" id="wingerJudgement" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+      <img src="./character images/wingerLookAway.png" id="wingerLookAway" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+      <img src="./character images/wingerNeutral.png" id="wingerNeutral" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+      <img src="./character images/wingerScared.png" id="wingerScared" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+      <img src="./character images/wingerSleep.png" id="wingerSleep" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+      <img src="./character images/wingerSmug.png" id="wingerSmug" class="imageAnimation" style="width: 440px; height: 500px; left: 480px;">
+
+      <!-- mae -->
+      <img src="./character images/maeAngry.png" id="maeAngry" class="imageAnimation" style="width: 440px; height: 500px; left: 40px">
+      <img src="./character images/maeConcentrateEye.gif" id="maeConcentrateEye" class="imageAnimation" style="width: 440px; height: 500px; left: 40px;">
+      <img src="./character images/maeConfusion.png" id="maeConfusion" class="imageAnimation" style="width: 440px; height: 500px; left: 40px">
+      <img src="./character images/maeDiscomfort.png" id="maeDiscomfort" class="imageAnimation" style="width: 440px; height: 500px; left: 40px">
+      <img src="./character images/maeDisgust.png" id="maeDisgust" class="imageAnimation" style="width: 440px; height: 500px; left: 40px">
+      <img src="./character images/maeHappy.png" id="maeHappy" class="imageAnimation" style="width: 440px; height: 500px; left: 40px">
+      <img src="./character images/maeJudgment.png" id="maeJudgment" class="imageAnimation" style="width: 440px; height: 500px; left: 40px">
+      <img src="./character images/maeNeutral.png" id="maeNeutral" class="imageAnimation" style="width: 440px; height: 500px; left: 40px">
+      <img src="./character images/maeNeutralEye.gif" id="maeNeutralEye" class="imageAnimation" style="width: 440px; height: 500px; left: 40px">
+      <img src="./character images/maeScared.png" id="maeScared" class="imageAnimation" style="width: 440px; height: 500px; left: 40px">
+      <img src="./character images/maeSmug.png" id="maeSmug" class="imageAnimation" style="width: 440px; height: 500px; left: 40px">
+
+      <!-- alabaster -->
+      <img src="./character images/alabasterLook.png" id="alabasterLook" class="imageAnimation" style="width: 400px; height: 500px; left: 260px;">
+    </div>
+
+      
+    <div id="inventoryMenu" style="visibility: hidden;"> <!-- the inventory -->
+      <div id="inventoryHolder"> <!-- bar holding all the items -->
+        <img src="./inventory items/camera.png" id="itemCamera" class="inventoryItem">
+        <img src="./inventory items/keyE.png" id="itemKeyE" class="inventoryItem" style="visibility: hidden;">
+        <img src="./inventory items/keyA.png" id="itemKeyA" class="inventoryItem" style="visibility: hidden;">
+        <img src="./inventory items/satori eye.png" id="itemSatoriEye" class="inventoryItem" style="visibility: hidden;">
+        <img src="./inventory items/spare fuze.png" id="itemFuse" class="inventoryItem" style="visibility: hidden;">
+        <img src="./inventory items/keycard.png" id="itemKeycard" class="inventoryItem" style="visibility: hidden;">
+        <img src="./inventory items/note.png" id="itemNote" class="inventoryItem" style="visibility: hidden;">
+
+        <img src="./apple.png" id="holderTESTitem" class="inventoryItem" style="visibility: hidden;">
+      </div>
+      <div id="inventoryButton"></div>
+    </div>
+    
+
+    <div> <!-- music/sound effects -->
+      <audio id="sfxTalk-default"><source src="./sfx/default-voice.wav"></audio>
+      <audio id="sfxTalk-mae"><source src="./sfx/mae-talk.wav"></audio>
+      <audio id="sfxTalk-winger"><source src="./sfx/winger-talk.wav"></audio>
+      <audio id="sfxTalkAlabaster" src="./sfx/alabaster-talk.wav"></audio>
+      <audio id="sfxTalk-baby"><source src="./sfx/baby-talk.wav"></audio>
+
+      <audio id="sfxInventoryClick"><source src="./sfx/inventory-click.wav"></audio>
+      <audio id="sfxInventoryDeclick"><source src="./sfx/inventory-declick.wav"></audio>
+      <audio id="sfxDoorEnter" src="./sfx/door-transition-regular.wav"></audio>
+      <audio id="sfxDoorStairs" src="./sfx/door-transition-stairs.wav"></audio>
+      <audio id="sfxDoorSlam" src="./sfx/door-slammed.wav"></audio>
+      <audio id="sfxMMhover" src="./sfx/menu-hover.wav"></audio>
+      <audio id="sfxMMselect" src="./sfx/menu-select.wav"></audio>
+      <audio id="sfxLowPower" src="./sfx/low-power.wav"></audio>
+
+      <audio id="musicMM" src="./music or ambience/MMaudio.wav"></audio>
+      <audio id="musicWhisper" src="./music or ambience/ambience_whisper.mp3"></audio>
+      <audio id="musicServer" src="./music or ambience/ambience_server.mp3"></audio>
+      <audio id="musicOutside" src="./music or ambience/ambience_outside.wav"></audio>
+      <audio id="musicHotel" src="./music or ambience/ambience_hotel.mp3"></audio>
+      <audio id="musicAirConditoner" src="./music or ambience/ambience_air-conditoner.mp3"></audio>
+    </div>
+
+    
+    <div id="dimmer" style="visibility: hidden;"></div> <!-- element that dims the screen during dialouge-->
+    <div id="textBox" style="visibility: hidden;"> <!-- text box, invisible by default -->
+      <p id="textContent"></p>
+      <img src="./ui/text-advancer.gif" id="textAdvanceButton" class="textButton" style="visibility: hidden;">
+    </div>
+  </div>
+
+
+
+
+
+  <script>
+    //  ==== document items ====
+    const imageTester = document.getElementById("clickMe");
+    const screenTester = document.getElementById('anotherScreen');
+    const screenReturnTest = document.getElementById('feildReturn');
+    const getToScene = document.getElementById('getToScene');
+    const dimmer = document.getElementById('dimmer');
+
+    const TESTitem = document.getElementById('TESTitem');
+    const holderTESTitem = document.getElementById('holderTESTitem');
+    TESTitem.mirrorItem = holderTESTitem;
+
+    // random objects
+    const gameBackground = document.getElementById('gameBackground');
+    const TESTmousefollower = document.getElementById('TESTmousefollower');
+    const feildSheep = document.getElementById('feildSheep');
+
+    // text buttons
+    const textAdvanceButton = document.getElementById("textAdvanceButton");
+    
+    // inventory
+    const inventoryButton = document.getElementById('inventoryButton');
+    const inventoryMenu = document.getElementById('inventoryMenu');
+    inventoryMenu.alignment = 'closed';
+    
+    // inventory items
+    const inventorySatoriEye = document.getElementById('itemSatoriEye');
+    const inventoryCamera = document.getElementById('itemCamera');
+    const inventoryKeyA = document.getElementById('itemKeyA');
+    const inventoryKeyE = document.getElementById('itemKeyE');
+    const inventoryNote = document.getElementById('itemNote');
+    const inventoryKeycard = document.getElementById('itemKeycard');
+    const inventoryFuse = document.getElementById('itemFuse');
+
+    // test images
+    const imgApple = document.getElementById("img1");
+    imgApple.alignment = 'right';
+    const imgOrange = document.getElementById("img2");
+    imgOrange.alignment = 'left';
+    imgOrange.style.right = '530px';
+
+    // winger's images
+    const wingerAngry = document.getElementById('wingerAngry');
+    wingerAngry.alignment = 'right';
+    wingerAngry.suite = 'winger';
+
+    const wingerConfusion = document.getElementById('wingerConfusion');
+    wingerConfusion.alignment = 'right';
+    wingerConfusion.suite = 'winger';
+
+    const wingerDiscomfort = document.getElementById('wingerDiscomfort');
+    wingerDiscomfort.alignment = 'right';
+    wingerDiscomfort.suite = 'winger';
+
+    const wingerDisgust = document.getElementById('wingerDisgust');
+    wingerDisgust.alignment = 'right';
+    wingerDisgust.suite = 'winger';
+    
+    const wingerHappy = document.getElementById('wingerHappy');
+    wingerHappy.alignment = 'right';
+    wingerHappy.suite = 'winger';
+
+    const wingerJudgement = document.getElementById('wingerJudgement');
+    wingerJudgement.alignment = 'right';
+    wingerJudgement.suite = 'winger';
+
+    const wingerLookAway = document.getElementById('wingerLookAway');
+    wingerLookAway.alignment = 'right';
+    wingerLookAway.suite = 'winger';
+
+    const wingerNeutral = document.getElementById('wingerNeutral');
+    wingerNeutral.alignment = 'right';
+    wingerNeutral.suite = 'winger';
+
+    const wingerScared = document.getElementById('wingerScared');
+    wingerScared.alignment = 'right';
+    wingerScared.suite = 'winger';
+
+    const wingerSleep = document.getElementById('wingerSleep');
+    wingerSleep.alignment = 'right';
+    wingerSleep.suite = 'winger';
+
+    const wingerSmug = document.getElementById('wingerSmug');
+    wingerSmug.alignment = 'right';
+    wingerSmug.suite = 'winger';
+
+    // mae's images
+    const maeAngry = document.getElementById('maeAngry');
+    maeAngry.alignment = 'left';
+    maeAngry.suite = 'mae';
+
+    const maeConcentrateEye = document.getElementById('maeConcentrateEye');
+    maeConcentrateEye.alignment = 'left';
+    maeConcentrateEye.suite = 'mae';
+
+    const maeConfusion = document.getElementById('maeConfusion');
+    maeConfusion.alignment = 'left';
+    maeConfusion.suite = 'mae';
+
+    const maeDiscomfort = document.getElementById('maeDiscomfort');
+    maeDiscomfort.alignment = 'left';
+    maeDiscomfort.suite = 'mae';
+
+    const maeDisgust = document.getElementById('maeDisgust');
+    maeDisgust.alignment = 'left';
+    maeDisgust.suite = 'mae';
+
+    const maeHappy = document.getElementById('maeHappy');
+    maeHappy.alignment = 'left';
+    maeHappy.suite = 'mae';
+
+    const maeJudgment = document.getElementById('maeJudgment');
+    maeJudgment.alignment = 'left';
+    maeJudgment.suite = 'mae';
+
+    const maeNeutral = document.getElementById('maeNeutral');
+    maeNeutral.alignment = 'left';
+    maeNeutral.suite = 'mae';
+
+    const maeNeutralEye = document.getElementById('maeNeutralEye');
+    maeNeutralEye.alignment = 'left';
+    maeNeutralEye.suite = 'mae';
+
+    const maeScared = document.getElementById('maeScared');
+    maeScared.alignment = 'left';
+    maeScared.suite = 'mae';
+
+    const maeSmug = document.getElementById('maeSmug');
+    maeSmug.alignment = 'left';
+    maeSmug.suite = 'mae';
+
+    // alabaster images
+    const alabasterLook = document.getElementById('alabasterLook');
+    alabasterLook.alignment = 'middle';
+    alabasterLook.suite = 'alabaster'
+
+    // ui rooms(main menu, intro info dump, credits room)
+    const BGmainMenu = document.getElementById('BGmainMenu');
+    const MMbutton1 = document.getElementById('MMbutton1');
+    const MMbutton2 = document.getElementById('MMbutton2');
+    const MMhighlight1 = document.getElementById('MMhighlight1');
+    const MMhighlight2 = document.getElementById('MMhighlight2');
+    const MMnewGame = document.getElementById('MMnewGame');
+    const MMexit = document.getElementById('MMexit');
+
+    const BGintroCutscene = document.getElementById('BGintroCutscene');
+    const SceneIntroTextDump = document.getElementById('SceneIntroTextDump');
+
+    const BGcredits = document.getElementById('BGcredits');
+    const CCcredits = document.getElementById('CCcredits');
+    const CCmoreCredits = document.getElementById('CCmoreCredits');
+
+    // rooms/room objects
+    const BGfeild = document.getElementById('BGfeild');
+    const BGtestRoom = document.getElementById('BGtestRoom');
+    const BGscene = document.getElementById('BGscene');
+
+
+    const BGboilerLowerPov = document.getElementById('BGboilerLowerPov');
+    const SceneBoilerLowerPovNavigatorBottom = document.getElementById('SceneBoilerLowerPovNavigatorBottom');
+    const SceneBoilerLowerPovCameraBox = document.getElementById('SceneBoilerLowerPovCameraBox');
+
+    const BGboilerPov1 = document.getElementById('BGboilerPov1');
+    const SceneBoilerPov1NavigatorBottom = document.getElementById('SceneBoilerPov1NavigatorBottom');
+    const SceneBoilerPov1CameraBox = document.getElementById('SceneBoilerPov1CameraBox');
+    const SceneBoilerPov1Winger = document.getElementById('SceneBoilerPov1Winger');
+
+    const BGboilerPov2 = document.getElementById('BGboilerPov2');
+    const SceneBoilerPov2NavigatorLeft = document.getElementById('SceneBoilerPov2NavigatorLeft');
+    const SceneBoilerPov2CameraBox = document.getElementById('SceneBoilerPov2CameraBox');
+    const SceneBoilerPov2Key = document.getElementById('SceneBoilerPov2Key');
+    SceneBoilerPov2Key.mirrorItem = inventoryKeyE;
+
+
+    const BGelec = document.getElementById('BGelec');
+    const SceneElecNavigatorBottom = document.getElementById('SceneElecNavigatorBottom');
+    const SceneElecCameraBox = document.getElementById('SceneElecCameraBox');
+    const SceneElecFuseBox = document.getElementById('SceneElecFuseBox');
+
+
+    const BGhallApov1 = document.getElementById('BGhallApov1');
+    const SceneHallApov1NavigatorBottom = document.getElementById('SceneHallApov1NavigatorBottom');
+    const SceneHallApov1CameraBox = document.getElementById('SceneHallApov1CameraBox');
+    const SceneHallApov1Door1 = document.getElementById('SceneHallApov1Door1');
+    const SceneHallApov1Door2 = document.getElementById('SceneHallApov1Door2');
+
+    const BGhallApov2 = document.getElementById('BGhallApov2');
+    const SceneHallApov2NavigatorCenter = document.getElementById('SceneHallApov2NavigatorCenter');
+    const SceneHallApov2NavigatorRight = document.getElementById('SceneHallApov2NavigatorRight');
+    const SceneHallApov2CameraBox = document.getElementById('SceneHallApov2CameraBox');
+    const SceneHallApov2Door1 = document.getElementById('SceneHallApov2Door1');
+
+    const BGhallApov3 = document.getElementById('BGhallApov3');
+    const SceneHallApov3NavigatorCenter = document.getElementById('SceneHallApov3NavigatorCenter');
+    const SceneHallApov3NavigatorBottom = document.getElementById('SceneHallApov3NavigatorBottom');
+    const SceneHallApov3CameraBox = document.getElementById('SceneHallApov3CameraBox');
+    const SceneHallApov3Poster = document.getElementById('SceneHallApov3Poster');
+    const SceneHallApov3Door1 = document.getElementById('SceneHallApov3Door1');
+
+
+    const BGhallBpov1 = document.getElementById('BGhallBpov1');
+    const SceneHallBpov1NavigatorLeft = document.getElementById('SceneHallBpov1NavigatorLeft');
+    const SceneHallBpov1NavigatorBottom = document.getElementById('SceneHallBpov1NavigatorBottom');
+    const SceneHallBpov1CameraBox = document.getElementById('SceneHallBpov1CameraBox');
+    const SceneHallBpov1Door1 = document.getElementById('SceneHallBpov1Door1');
+
+    const BGhallBpov2 = document.getElementById('BGhallBpov2');
+    const SceneHallBpov2NavigatorCenter = document.getElementById('SceneHallBpov2NavigatorCenter');
+    const SceneHallBpov2NavigatorBottom = document.getElementById('SceneHallBpov2NavigatorBottom');
+    const SceneHallBpov2CameraBox = document.getElementById('SceneHallBpov2CameraBox');
+    const SceneHallBpov2Door1 = document.getElementById('SceneHallBpov2Door1');
+
+    const BGhallBpov3 = document.getElementById('BGhallBpov3');
+    const SceneHallBpov3NavigatorLeft = document.getElementById('SceneHallBpov3NavigatorLeft');
+    const SceneHallBpov3CameraBox = document.getElementById('SceneHallBpov3CameraBox');
+    const SceneHallBpov3Door1 = document.getElementById('SceneHallBpov3Door1');
+
+    
+    const BGLhallPov1 = document.getElementById('BGLhallPov1');
+    const SceneLHallPov1NavigatorRight = document.getElementById('SceneLHallPov1NavigatorRight');
+    const SceneLHallPov1CameraBox = document.getElementById('SceneLHallPov1CameraBox');
+    const SceneLhallPov1Door1 = document.getElementById('SceneLhallPov1Door1');
+    const SceneLhallPov1Door2 = document.getElementById('SceneLhallPov1Door2');
+
+    const BGLhallPov2 = document.getElementById('BGLhallPov2');
+    const SceneLHallPov2NavigatorLeft = document.getElementById('SceneLHallPov2NavigatorLeft');
+    const SceneLHallPov2NavigatorBottom = document.getElementById('SceneLHallPov2NavigatorBottom');
+    const SceneLHallPov2CameraBox = document.getElementById('SceneLHallPov2CameraBox');
+    const SceneLhallPov2Crate = document.getElementById('SceneLhallPov2Crate');
+    const SceneLhallPov2Door1 = document.getElementById('SceneLhallPov2Door1');
+
+
+    const BGleftHallPov1 = document.getElementById('BGleftHallPov1');
+    const SceneLeftHallPov1NavigatorLeft = document.getElementById('SceneLeftHallPov1NavigatorLeft');
+    const SceneLeftHallPov1NavigatorCenter = document.getElementById('SceneLeftHallPov1NavigatorCenter');
+    const SceneLeftHallPov1CameraBox = document.getElementById('SceneLeftHallPov1CameraBox');
+
+    const BGleftHallPov2 = document.getElementById('BGleftHallPov2');
+    const SceneLeftHallPov2NavigatorRight = document.getElementById('SceneLeftHallPov2NavigatorRight');
+    const SceneLeftHallPov2NavigatorBottom = document.getElementById('SceneLeftHallPov2NavigatorBottom');
+    const SceneLeftHallPov2CameraBox = document.getElementById('SceneLeftHallPov2CameraBox');
+    const SceneLeftHallPov2Door1 = document.getElementById('SceneLeftHallPov2Door1');
+    const SceneLeftHallPov2Door2 = document.getElementById('SceneLeftHallPov2Door2');
+
+    const BGleftHallPov3 = document.getElementById('BGleftHallPov3');
+    const SceneLeftHallPov3NavigatorLeft = document.getElementById('SceneLeftHallPov3NavigatorLeft');
+    const SceneLeftHallPov3NavigatorBottom = document.getElementById('SceneLeftHallPov3NavigatorBottom');
+    const SceneLeftHallPov3CameraBox = document.getElementById('SceneLeftHallPov3CameraBox');
+    const SceneLeftHallPov3Door1 = document.getElementById('SceneLeftHallPov3Door1');
+    const SceneLeftHallPov3Door2 = document.getElementById('SceneLeftHallPov3Door2');
+
+
+    const BGlivingSpaceA = document.getElementById('BGlivingSpaceA');
+    const SceneLivingSpaceANavigatorBottom = document.getElementById('SceneLivingSpaceANavigatorBottom');
+    const SceneLivingSpaceACameraBox = document.getElementById('SceneLivingSpaceACameraBox');
+    const SceneLivingSpaceAcard = document.getElementById('SceneLivingSpaceAcard');
+    SceneLivingSpaceAcard.mirrorItem = inventoryKeycard;
+    const SceneLivingSpaceAfuses = document.getElementById('SceneLivingSpaceAfuses');
+    SceneLivingSpaceAfuses.mirrorItem = inventoryFuse;
+    const SceneLivingSpaceAlaptop = document.getElementById('SceneLivingSpaceAlaptop');
+
+    const BGlivingSpaceD = document.getElementById('BGlivingSpaceD');
+    const SceneLivingSpaceDNavigatorLeft = document.getElementById('SceneLivingSpaceDNavigatorLeft');
+    const SceneLivingSpaceDCameraBox = document.getElementById('SceneLivingSpaceDCameraBox');
+    const SceneLivingSpaceDbed = document.getElementById('SceneLivingSpaceDbed');
+    const SceneLivingSpaceDchairA = document.getElementById('SceneLivingSpaceDchairA');
+    const SceneLivingSpaceDchairB = document.getElementById('SceneLivingSpaceDchairB'); 
+    const SceneLivingSpaceDdoor1 = document.getElementById('SceneLivingSpaceDdoor1');
+
+
+    const BGrightHallPov1 = document.getElementById('BGrightHallPov1');
+    const SceneRightHallPov1NavigatorBottom = document.getElementById('SceneRightHallPov1NavigatorBottom');
+    const SceneRightHallPov1CameraBox = document.getElementById('SceneRightHallPov1CameraBox');
+    const SceneRightHallPov1Door1 = document.getElementById('SceneRightHallPov1Door1');
+    const SceneRightHallPov1Key = document.getElementById('SceneRightHallPov1Key');
+    SceneRightHallPov1Key.mirrorItem = inventoryKeyA;
+
+    const BGrightHallPov2 = document.getElementById('BGrightHallPov2');
+    const SceneRightHallPov2NavigatorCenter = document.getElementById('SceneRightHallPov2NavigatorCenter');
+    const SceneRightHallPov2NavigatorBottom = document.getElementById('SceneRightHallPov2NavigatorBottom');
+    const SceneRightHallPov2CameraBox = document.getElementById('SceneRightHallPov2CameraBox');
+    const SceneRightHallPov2AlabasterPeek = document.getElementById('SceneRightHallPov2AlabasterPeek');
+
+    const BGrightHallPov3 = document.getElementById('BGrightHallPov3');
+    const SceneRightHallPov3NavigatorRight = document.getElementById('SceneRightHallPov3NavigatorRight');
+    const SceneRightHallPov3CameraBox = document.getElementById('SceneRightHallPov3CameraBox');
+    const SceneRightHallPov3Door1 = document.getElementById('SceneRightHallPov3Door1');
+    const SceneRightHallPov3Door2 = document.getElementById('SceneRightHallPov3Door2');
+
+    const BGrightHallPov4 = document.getElementById('BGrightHallPov4');
+    const SceneRightHallPov4NavigatorCenter = document.getElementById('SceneRightHallPov4NavigatorCenter');
+    const SceneRightHallPov4CameraBox = document.getElementById('SceneRightHallPov4CameraBox');
+    const SceneRightHallPov4Door1 = document.getElementById('SceneRightHallPov4Door1');
+
+
+    const BGrightHallU = document.getElementById('BGrightHallU');
+
+
+    const BGstairsAexit = document.getElementById('BGstairsAexit');
+    const SceneStairsAexitCameraBox = document.getElementById('SceneStairsAexitCameraBox');
+    const SceneStairsAexitDoor1 = document.getElementById('SceneStairsAexitDoor1');
+    const SceneStairsAexitDoor2 = document.getElementById('SceneStairsAexitDoor2');
+
+    const BGstairsApov1 = document.getElementById('BGstairsApov1');
+    const SceneStairsApov1NavigatorRight = document.getElementById('SceneStairsApov1NavigatorRight');
+    const SceneStairsApov1CameraBox = document.getElementById('SceneStairsApov1CameraBox');
+    const SceneStairsApov1Door1 = document.getElementById('SceneStairsApov1Door1');
+
+    const BGstairsA2pov1 = document.getElementById('BGstairsA2pov1');
+    const SceneStairsA2pov1NavigatorRight = document.getElementById('SceneStairsA2pov1NavigatorRight');
+    const SceneStairsA2pov1CameraBox = document.getElementById('SceneStairsA2pov1CameraBox');
+    const SceneStairsA2pov1Door1 = document.getElementById('SceneStairsA2pov1Door1');
+
+    const BGstairsApov2 = document.getElementById('BGstairsApov2');
+    const SceneStairsApov2NavigatorLeft = document.getElementById('SceneStairsApov2NavigatorLeft');
+    const SceneStairsApov2CameraBox = document.getElementById('SceneStairsApov2CameraBox');
+    const SceneStairsApov2stairs = document.getElementById('SceneStairsApov2stairs');
+    const SceneStairsApov2door1 = document.getElementById('SceneStairsApov2door1');
+
+    const BGstairsA2pov2 = document.getElementById('BGstairsA2pov2');
+    const SceneStairsA2pov2NavigatorLeft = document.getElementById('SceneStairsA2pov2NavigatorLeft');
+    const SceneStairsA2pov2CameraBox = document.getElementById('SceneStairsA2pov2CameraBox');
+    const SceneStairsA2pov2stairs = document.getElementById('SceneStairsA2pov2stairs');
+
+
+    const BGtopHallHighPov1 = document.getElementById('BGtopHallHighPov1');
+    const SceneTopHallHighPov1NavigatorBottom = document.getElementById('SceneTopHallHighPov1NavigatorBottom');
+    const SceneTopHallHighPov1CameraBox = document.getElementById('SceneTopHallHighPov1CameraBox');
+    const SceneTopHallHighPov1Door1 = document.getElementById('SceneTopHallHighPov1Door1');
+    const SceneTopHallHighPov1Rail = document.getElementById('SceneTopHallHighPov1Rail');
+
+    const BGtopHallHighPov2 = document.getElementById('BGtopHallHighPov2');
+    const SceneTopHallHighPov2NavigatorCenter = document.getElementById('SceneTopHallHighPov2NavigatorCenter');
+    const SceneTopHallHighPov2NavigatorBottom = document.getElementById('SceneTopHallHighPov2NavigatorBottom');
+    const SceneTopHallHighPov2CameraBox = document.getElementById('SceneTopHallHighPov2CameraBox');
+    const SceneTopHallHighPov2Eye = document.getElementById('SceneTopHallHighPov2Eye');
+
+    const BGtopHallLowPov1 = document.getElementById('BGtopHallLowPov1');
+    const SceneTopHallLowPov1NavigatorLeft = document.getElementById('SceneTopHallLowPov1NavigatorLeft');
+    const SceneTopHallLowPov1CameraBox = document.getElementById('SceneTopHallLowPov1CameraBox');
+    const SceneTopHallLowPov1Door1 = document.getElementById('SceneTopHallLowPov1Door1');
+    const SceneTopHallLowPov1Rail = document.getElementById('SceneTopHallLowPov1Rail');
+
+    const BGtopHallLowPov2 = document.getElementById('BGtopHallLowPov2');
+    const SceneTopHallLowPov2NavigatorRight = document.getElementById('SceneTopHallLowPov2NavigatorRight');
+    const SceneTopHallLowPov2CameraBox = document.getElementById('SceneTopHallLowPov2CameraBox');
+    const SceneTopHallLowPov2Door1 = document.getElementById('SceneTopHallLowPov2Door1');
+    const SceneTopHallLowPov2Door2 = document.getElementById('SceneTopHallLowPov2Door2');
+    BGmainMenu.style.visibility = 'visible'; // starting room
+    var currentRoom = BGmainMenu;            // sets the current room
+    // default room should be BGmainMenu
+
+    // sound effects
+    const sfxTalkDefault = document.getElementById('sfxTalk-default');
+    const sfxTalkMae = document.getElementById('sfxTalk-mae');
+    const sfxTalkWinger = document.getElementById('sfxTalk-winger');
+    const sfxTalkAlabaster = document.getElementById('sfxTalkAlabaster');
+    sfxTalkAlabaster.volume = 0.6;
+    const sfxTalkBaby = document.getElementById('sfxTalk-baby');
+
+    const sfxInventoryClick = document.getElementById('sfxInventoryClick');
+    const sfxInventoryDeclick = document.getElementById('sfxInventoryDeclick');
+    const sfxDoorEnter = document.getElementById('sfxDoorEnter');
+    const sfxDoorStairs = document.getElementById('sfxDoorStairs');
+    const sfxDoorSlam = document.getElementById('sfxDoorSlam');
+    const sfxMMhover = document.getElementById('sfxMMhover');
+    const sfxMMselect = document.getElementById('sfxMMselect');
+    const sfxLowPower = document.getElementById('sfxLowPower');
+
+    const musicMM = document.getElementById('musicMM');
+    const musicWhisper = document.getElementById('musicWhisper');
+    const musicServer = document.getElementById('musicServer');
+    const musicOutside = document.getElementById('musicOutside');
+    const musicHotel = document.getElementById('musicHotel');
+    const musicAirConditoner = document.getElementById('musicAirConditoner');
+    musicMM.loop = true;
+    window.addEventListener('click', () => {if (currentRoom == BGmainMenu) {musicMM.play()}}, {once: true});
+
+
+    // === list of dialouge entries ===
+    const dialougeSampleText = [{text: "sample text"}];
+    const dialougeIntro = [{text: "this, is, a, comma, test"}];
+    const dialougeImageTester = [
+      {text: "test", subjects: [wingerAngry]},
+      {text: "test", subjects: [wingerConfusion]},
+      {text: "test", subjects: [wingerDiscomfort]},
+      {text: "test", subjects: [wingerDisgust]},
+      {text: "test", subjects: [wingerHappy]},
+      {text: "test", subjects: [wingerJudgement]},
+      {text: "test", subjects: [wingerNeutral]},
+      {text: "test", subjects: [wingerSmug]},
+
+      {text: "test", subjects: [maeAngry]},
+      {text: "test", subjects: [maeConfusion]},
+      {text: "test", subjects: [maeDiscomfort]},
+      {text: "test", subjects: [maeDisgust]},
+      {text: "test", subjects: [maeHappy]},
+      {text: "test", subjects: [maeJudgment]},
+      {text: "test", subjects: [maeNeutral]},
+      {text: "test", subjects: [maeSmug]}
+    ];
+    const dialougeNewFormat = [
+      {text: "hey bozo", subjects: [imgApple]},
+      {text: "bozo", subjects: [imgApple]},
+      {text: 'what', subjects: [imgOrange, imgApple]},
+      {text: 'hi', subjects: [imgApple, imgOrange]},
+      {text: 'okay. go away', subjects: [imgOrange, imgApple]},
+      {text: ':(', subjects: [imgApple, imgOrange]}
+    ];
+    const dialogueTestCutscene = [
+      {text: 'after years of waiting', subjects: [imgApple]},
+      {text: 'nothing came', subjects: [imgApple]}
+    ];
+
+    // sheep dialouge
+    const dialougeSheepTalk = [
+      {text: 'baaaaa'},
+      {text: 'omg that sheep is so cutes :D', subjects: [maeNeutral]},
+      {text: 'eh i\'d give it a 4', subjects: [wingerNeutral, maeNeutral]},
+      {text: '>:[', subjects: [maeNeutral, wingerNeutral]}
+    ];
+    const dialougeSheepSatori = [
+      {text: 'i wonder what this sheep is thinking....', subjects: [maeNeutral]},
+      {text: 'ooohh i\'m sooooo hungry'}
+    ];
+    const dialougeSheepCamera = [
+      {text: 'yep that\'s a sheep alright', subjects: [wingerNeutral]}
+    ];
+    const dialougeSheepApple = [
+      {text: 'baaaaaaa! *voilent horfing*'},
+      {text: 'gross..', subjects: [wingerNeutral]}
+    ];
+
+    // actual ingame dialouge :OOOOOO
+    // format for dialouge entires: dialouge[room][background(optional)][enviornment object][item/flag(optional)]
+    // room: the room which the dialogue is suppose to play in
+    // background: the pov which the dialouge takes place in, ignored if it's for the camera
+    // enviornmental object: what object in the scene the dialogue is associated with
+    //item/flag: item or global flag that needs to be set for this dialogue to trigger
+
+    // stairs A
+    const dialogueStairsAIntroCutscene = [
+      {text: '..And were in.', subjects: [wingerNeutral]},
+      {text: 'Woah. This place is creepy.', subjects: [maeNeutral, wingerNeutral]},
+      {text: 'Careful where you step down here, this place is definitely falling apart from the looks of things.', subjects: [wingerNeutral, maeNeutral]},
+      {text: 'Shouldn\'t you have brought some form of respiratory protection like masks or something then?', subjects: [maeDiscomfort, wingerNeutral]},
+      {text: 'Uhh..', subjects: [wingerNeutral, maeDiscomfort]},
+      {text: 'I may have forgotten hahaa.', subjects: [wingerDiscomfort, maeDiscomfort]},
+      {text: 'Winger you moron. Let\'s just go back and get them then.', subjects: [maeJudgment, wingerDiscomfort]},
+      {text: 'I\'m not gonna jump through all those hoops again just so we can get a couple of masks dude.', subjects: [wingerDisgust, maeJudgment]},
+      {text: 'Fine, whatever.', subjects: [maeDisgust, wingerDisgust]}
+    ]
+
+    const dialougeStairsACenterCamera = [
+      {text: 'Eugh, this place reeks of mold..', subjects: [wingerDisgust]},
+      {text: 'Should\'ve brought those masks dude.', subjects: [maeJudgment, wingerDisgust]}
+    ];
+    
+    const dialogueStairsAPov2Stairs = [
+      {text: 'Dude you better not be chickening out right as we got here.', subjects: [wingerConfusion]},
+      {text: 'Oh no no no im just uhh.. stretching my calves on the steps is all haha.', subjects: [maeConfusion, wingerConfusion]},
+      {text: '...', subjects: [wingerConfusion, maeConfusion]},
+      {text: '...', subjects: [maeConfusion, wingerConfusion]},
+      {text: '....get back down here.', subjects: [wingerJudgement, maeConfusion]}
+    ];
+
+    // stairs A exit
+    const dialogueStairsAExitCenterCamera = [
+      {text: 'Jeez, that door looks really scratched up there..', subjects: [wingerDiscomfort]}
+    ];
+
+    const dialogueStairsAExitPov1Door = [
+      {text: 'Dude wrong way.', subjects: [wingerNeutral]}
+    ];
+
+    // top hall(lower)
+    const dialogueTophallCenterCamera = [
+      {text: 'I\'m liking all the exposed pipes in the walls here, looks pretty cool.', subjects: [wingerHappy]},
+      {text: 'I can\'t imagine working around all these pipes. Something about them makes me feel real uncomfortable.', subjects: [maeDiscomfort, wingerHappy]},
+      {text: 'Hehe, imagine working next to one of the big ones and having it burst fresh sewage into your face.', subjects: [wingerSmug, maeDiscomfort]},
+      {text: 'Shut UP dude! That\'s a miserable idea!', subjects: [maeAngry, wingerSmug]},
+      {text: 'Teehee!', subjects: [wingerHappy, maeAngry]}
+    ];
+
+    const dialogueTophallLowpov1Rail = [
+      {text: 'Everything looks so tall from down here.'}
+    ];
+    
+    const dialogueTophallLowpov2Door = [
+      {text: 'The entrance is filled up with bricks and boards.'}
+    ];
+
+    // left hall
+    const dialogueLeftHallCenterCamera = [
+      {text: 'Oh this room is super cool. I could imagine a place like this being in a game or something.', subjects: [maeHappy]},
+      {text: 'Yeah I think this room was one of the ones I saw online back when I was researching this place.', subjects: [wingerNeutral, maeHappy]},
+      {text: 'Really? The way you talked about it made it sound like nobody\'s even been here ever.', subjects: [maeNeutral, wingerNeutral]},
+      {text: 'Well how do you expect a vast network of underground structures beneath the literal capital city to remain a complete secret?', subjects: [wingerNeutral, maeNeutral]},
+      {text: 'I guess that\'s true.', subjects: [maeNeutral, wingerNeutral]},
+    ];
+
+    const dialogueLeftHallpov1Rail = [
+      {text: 'The pit is too dark to see all the way down to the bottom.'}
+    ];
+
+    const dialogueLeftHallSharedDoor = [
+      {text: 'The door won\'t open, it\'s not it\'s time.'}
+    ];
+
+    // L hall(which is a different thing from left hall cuz FUCKK YOU)
+    const dialogueLHallCenterCamera = [
+      {text: 'Man I love rooms.', subjects: [wingerSmug]}
+    ];
+
+    const dialogueLHallpov1Door1 = [
+      {text: 'The entrance is filled up with boards and bricks.'}
+    ];
+
+    const dialogueLhallpov2Crate1 = [
+      {text: 'Hold on..', subjects: [maeNeutral]},
+      {text: 'LIVE animals??', subjects: [maeConfusion]},
+      {text: 'That are most likely dead or were taken with the people that abandoned this place?', subjects: [wingerJudgement, maeConfusion]},
+      {text: 'Come on dawg. There\'s nothing down here out to get ya.', subjects: [wingerNeutral, maeConfusion]}
+    ];
+
+    const dialogueLhallpov2Crate1PostEye = [
+      {text: '..Live animals.', subjects: [maeNeutral]},
+      {text: 'Do you think the thing we saw earlier was some kind of animal?', subjects: [maeDiscomfort]},
+      {text: 'I don\'t know maybe? There\'s no way anything not human could get down here though.', subjects: [wingerDiscomfort, maeDiscomfort]},
+      {text: 'Plus it\'d probably die of hunger or starvation with the lack of any foodstuff here.', subjects: [wingerDiscomfort, maeDiscomfort]}
+    ];
+
+    // hall B
+    const dialogueHallBIntroCutscene = [
+      {text: 'Do you hear that?', subjects: [wingerNeutral]},
+      {text: 'What, that ringing? \'Cuz yeah I do. What do ya think could be causing it?', subjects: [maeNeutral, wingerNeutral]},
+      {text: 'Probably just noise from the buildings built around this place.', subjects: [wingerNeutral, maeNeutral]},
+      {text: 'But this far down? We can\'t be that close to anything functional on the surface.', subjects: [maeNeutral, wingerNeutral]},
+      {text: 'Pbbt well I dunno then.', subjects: [wingerNeutral, maeNeutral]}
+    ];
+
+    const dialogueHallBCenterCamera = [
+      {text: 'Strange how each of these doors have both a keycard scanner and a keyhole on them.', subjects: [wingerConfusion]},
+      {text: 'These doors were probably used with physical keys when this place was first constructed and later they upgraded them to include the scanners.', subjects: [maeNeutral, wingerConfusion]},
+      {text: 'Maybe there was a master key or card as well that could open all the doors.', subjects: [maeNeutral, wingerConfusion]},
+      {text: 'Oh that makes sense! You\'re so smart with these logical deduction kinda things.', subjects: [wingerHappy, maeNeutral]},
+      {text: 'Hehe thank you ♥', subjects: [maeHappy, wingerHappy]}
+    ];
+
+    const dialogueHallBpov1Cdoor = [
+      {text: 'The door is locked. You can faintly hear beeping on the other side.'}
+    ];
+
+    const dialogueHallBpov1CdoorOpen = [
+      {text: 'Man, this room is super dark huh?', subjects: [wingerConfusion]},
+      {text: 'Yeah genius, the flashlight died.', subjects: [maeJudgment, wingerConfusion]},
+      {text: 'Do you have any spare batteries?', subjects: [maeDisgust, wingerConfusion]},
+      {text: 'Uhhhhhhhhhh.......... forgot those too.', subjects: [wingerDiscomfort, maeDisgust]},
+      {text: 'The hell do you mean you FORGOT them too?', subjects: [maeAngry, wingerDiscomfort]},
+      {text: 'Do you have any idea how bad our situation is? Trapped god knows how far underground with no lights?', subjects: [maeAngry, wingerDiscomfort]},
+      {text: 'On top of the fact that there\'s some freakish entity roaming around down here.', subjects: [maeAngry, wingerDiscomfort]},
+      {text: 'We don\'t even have anything to defend ourselves with, you dumb ignorant f-', subjects: [maeAngry, wingerDiscomfort]},
+      {text: 'shut up.', subjects: [alabasterLook]},
+      {text: '!!!!', subjects: [maeScared, wingerDiscomfort]},
+      {text: '!!!!', subjects: [wingerScared, maeScared]},
+      {text: 'you two should have left when you had the chance. now you\'ve seen too much.', subjects: [alabasterLook]},
+      {text: 'goodbye.', subjects: [alabasterLook]},
+    ]; // need a winger scared sprite
+
+    const dialogueHallBpov2DdoorLocked = [
+      {text: 'This door is locked. You know this because you know how to open doors and this one isn\'t opening.'}
+    ];
+
+    // top hall(upper)
+    const dialogueTophallUpCenterCamera = [
+      {text: 'Oh cool we\'re up here now.', subjects: [wingerNeutral]}
+    ];
+
+    const dialogueTophallUpCenterCameraAlt = [
+      {text: 'Damn, I really hope they found whoevers cat that was, they look so cute.', subjects: [wingerNeutral]}
+    ];
+
+    const dialogueTophallUpCenterCameraSeenBoiler = [
+      {text: 'Yay we\'re up here now :D!', subjects: [wingerHappy]},
+      {text: 'I told you there would be another way.', subjects: [maeHappy, wingerHappy]}
+    ];
+
+    const dialogueTophallHighpov1Rail = [
+      {text: 'Everything looks so small from up here.'}
+    ];
+
+    const dialogueTophallHighpov2EyeFirst = [
+      {text: 'Yo, look at that thing dangling from the roof.', subjects: [wingerNeutral]},
+      {text: 'What?', subjects: [maeNeutral, wingerNeutral]},
+      {text: 'OH!', subjects: [maeScared, wingerNeutral]},
+      {text: 'Christ dude are you trying to get me to shit myself? Just pointing out an EYEBALL dangling from the roof so casually.', subjects: [maeAngry, wingerNeutral]},
+      {text: 'Relaaax, it isn\'t even real. Probably just a prosthetic or something someone before us placed here to be funny.', subjects: [wingerSmug, maeAngry]},
+      {text: 'Well it\'s NOT funny, and I hate it.', subjects: [maeJudgment, wingerSmug]},
+    ];
+
+    const dialogueTophallHighpov2EyeSecond = [
+      {text: 'Yo, look at that thing dangling from the roof.', subjects: [wingerSmug]},
+      {text: 'What?', subjects: [maeNeutral, wingerSmug]},
+      {text: 'GEAH!', subjects: [maeScared, wingerSmug]},
+      {text: 'WHYY are these things down here man? Would think that you brought all this crap down yourself just to scare me.', subjects: [maeAngry, wingerSmug]},
+      {text: 'Uh no actually. I have no clue where they come from.', subjects: [wingerNeutral, maeAngry]},
+      {text: 'Hmph.. Dick.', subjects: [maeJudgment, wingerNeutral]},
+      {text: ':)', subjects: [wingerSmug, maeJudgment]},
+    ];
+
+    // boiler room
+    const dialogueBoilerPov1IntroCutscene = [
+      {text: 'Hehe dude come check this out.', subjects: [wingerSmug]}
+    ];
+
+    const dialogueBoilerCenterCamera = [
+      {text: 'When I was young I was always scared of the boiler room in my house \'cuz of the noises.', subjects: [maeNeutral]},
+      {text: 'Me and my brother were playing hide and seek one day and he hid in the boiler room for 40 minutes while I searched the house struggling to find him.', subjects: [maeNeutral]},
+      {text: 'Eventually he got bored and just jumped out the door to scare me while I was walking by.', subjects: [maeNeutral]},
+      {text: 'Shit scared me so bad.', subjects: [maeNeutral]},
+      {text: 'Lamo nerd.', subjects: [wingerNeutral, maeNeutral]},
+      {text: 'Yeah thanks for the peer-reviewed response.', subjects: [maeJudgment, wingerNeutral]}
+    ];
+
+    const dialogueBoilerPovLowCenterCamera = [
+      {text: 'Hmm..', subjects: [wingerNeutral]},
+      {text: 'What\'s on your mind?', subjects: [maeNeutral, wingerNeutral]},
+      {text: 'Could you mantle me up to the second level of this room? I wanna see what\'s up there.', subjects: [wingerNeutral, maeNeutral]},
+      {text: 'What no? I\'ll mess up my nails, plus there\'s no way I\'m strong enough to lift you up that high.', subjects: [maeDiscomfort, wingerNeutral]},
+      {text: 'Okay, well how about I push you up there then?', subjects: [wingerNeutral, maeDiscomfort]},
+      {text: 'If I chose to wear pants today then I would consider but uh, no.', subjects: [maeDisgust, wingerNeutral]},
+      {text: 'What\'s the rush for anyhow? There\'s probably another easier and more safe way to get up there than climbing up this wall.', subjects: [maeNeutral, wingerNeutral]},
+      {text: ':(..', subjects: [wingerDiscomfort, maeNeutral]},
+      {text: 'Christ, your like a puppy with how impatient you get sometimes.', subjects: [maeJudgment, wingerDiscomfort]}
+    ];
+
+    // need a mae scared sprite for these 2 enteries
+    const dialogueBoilerPov1StandingWinger = [
+      {text: 'AUGHSJ!', subjects: [maeScared]},
+      {text: 'Fuckin\' hell man WHYYY is there just an ARM in the wall??', subjects: [maeAngry]},
+      {text: '\'Cuz it\'s funny lol.', subjects: [wingerSmug, maeAngry]},
+      {text: 'No >:[', subjects: [maeJudgment, wingerSmug]},
+      {text: 'Wait hold on, what\'s this thing?', subjects: [maeNeutral]}
+    ];
+
+    const dialogueBoilerPov1StandingWingerAlt = [
+      {text: 'AUGHSJ!', subjects: [maeScared]},
+      {text: 'WHY IS THERE SO MANY WEIRD APPENDAGES DOWN HERE??', subjects: [maeAngry]},
+      {text: '\'Cuz it\'s funny lo-', subjects: [wingerSmug, maeAngry]},
+      {text: 'SHUT UP >:[', subjects: [maeAngry, wingerSmug]},
+      {text: 'Wait hold on what\'s this?', subjects: [maeNeutral]}
+    ];
+
+    // living space D
+    const dialogueLivingSpaceDCameraCenter = [
+      {text: 'Man I love rooms.', subjects: [wingerHappy]}
+    ];
+
+    const dialogueLivingSpaceDCameraCenterDoorLover = [
+      {text: 'Maaann I love rooms.', subjects: [wingerSmug]},
+      {text: 'Is this guy acoustic?', subjects: [maeNeutral]}
+    ];
+
+    const dialogueLivingSpaceDPov1CouchNothing = [
+      {text: 'A very old and dusty, but still comfy looking couch.'}
+    ];
+
+    // this entry might break, make sure to check that before release
+    // also need a scared sprite for this entry
+    const dialogueLivingSpaceDPov1CouchCamera = [
+      {text: 'Dude I wish I had the foresight to bring my lockpicking kit for all these doors.', subjects: [wingerNeutral]},
+      {text: 'Getting bodyblocked by these dumb locks all the time is pretty annoying.', subjects: [wingerNeutral]},
+      {text: 'Pfff, knowing your luck you\'d break the entire door mechanisim trying to crack one open. Extra lucky if you manage to set off an alarm.', subjects: [maeNeutral, wingerNeutral]},
+      {text: 'Oooo you wanna fight dawg? I\'ll beat you up right here right now.', subjects: [wingerJudgement, maeNeutral]},
+      {text: 'Oh nooo, I\'m soooo scared! What ever will I d-', subjects: [maeSmug, wingerJudgement]},
+      {text: 'WAUGH!', subjects: [maeScared, wingerJudgement]},
+      {text: 'Winger pushes Mae into the couch as a bit, the force of the blast being enough to tilt the seat backwards with immense speed'},
+      {text: 'As the couch keeps leaning it breaks through existing hole in wall behind it, and both Mae and the couch go straight into the wall'},
+      {text: 'Ow..', subjects: [maeDiscomfort]},
+      {text: 'Omg I\'m so sorry bro, are you hurt?', subjects: [wingerDiscomfort, maeDiscomfort]},
+      {text: 'No no I\'m fine, can\'t say the same about the wall though.', subjects: [maeNeutral, wingerDiscomfort]},
+      {text: 'Aw damn.', subjects: [wingerNeutral, maeNeutral]},
+      {text: 'Wait maybe we can explore more through this hole actually, help me move the couch outta the way.', subjects: [wingerNeutral, maeNeutral]},
+    ];
+
+    // need a slight edit of the smug sprite with eyes closed for winger
+    const dialogueLivingSpaceDPov1Bed = [
+      {text: 'Wow, even with all the dust and debris this bed looks so much more comfy than the ones back at our dorm.', subjects: [maeNeutral]},
+      {text: 'Winger comes and lies down in the bed'},
+      {text: 'Mmmm soft..', subjects: [wingerSleep]},
+      {text: 'Can we keep it?', subjects: [wingerSmug]},
+      {text: 'Only if you\'re the one carrying it all the way back.', subjects: [maeNeutral, wingerSmug]},
+      {text: ':(', subjects: [wingerDiscomfort, maeNeutral]},
+    ];
+
+    // right hall unique
+    const dialogueRightHallUniqueCameraCenter = [
+      {text: 'It is a looooooonng waaaaayyy dooowwwnnnnnn.', subjects: [wingerNeutral]}
+    ];
+
+    const dialogueRightHallUniquePov1Door1 = [
+      {text: 'Locked.'},
+      {text: 'Great; Guessin\' we should head back then.', subjects: [wingerNeutral]}
+    ];
+
+    // need an edit of winger discomfort sprite for lookaway
+    const dialogueRightHallUniquePov2DoorScare = [
+      {text: '...', subjects: [maeDiscomfort]},
+      {text: '...', subjects: [wingerDiscomfort, maeDiscomfort]},
+      {text: 'Did you see that just now?', subjects: [maeConfusion, wingerDiscomfort]},
+      {text: 'The guy?', subjects: [wingerDiscomfort, maeConfusion]},
+      {text: 'Yeah.', subjects: [maeConfusion, wingerDiscomfort]},
+      {text: '...', subjects: [wingerLookAway, maeConfusion]},
+      {text: 'Yeah.', subjects: [wingerDiscomfort, maeConfusion]},
+      {text: 'You don\'t think there are people living down here do you?', subjects: [maeDiscomfort, wingerDiscomfort]},
+      {text: 'Well, it\'s not the most unlikely-', subjects: [wingerConfusion, maeDiscomfort]},
+      {text: 'Winger we\'re not greeting the neighbors here that thing can very easily be a threat.', subjects: [maeJudgment, wingerConfusion]},
+      {text: 'OKAY okay you have a point.', subjects: [wingerDiscomfort, maeJudgment]},
+      {text: 'I\'d rather not die alone in the dark to the hand of some guy as well, buuuuuuut it\'s been ages since I\'ve been able to do this kind of explorin\'.', subjects: [wingerNeutral, maeJudgment]},
+      {text: 'Soooo....', subjects: [wingerLookAway, maeJudgment]},
+      {text: 'Dude you are unbelievably stupid to wanna keep going after that.', subjects: [maeAngry, wingerLookAway]},
+      {text: 'Cmooonn bro.', subjects: [wingerDiscomfort, maeAngry]},
+      {text: 'I mean you could go back and wait in the car if you want?', subjects: [wingerLookAway, maeAngry]},
+      {text: 'Leaving you here alone is an equally as stupid idea. I\'ll just..', subjects: [maeDisgust, wingerLookAway]},
+      {text: 'Just what?', subjects: [wingerDiscomfort, maeDisgust]},
+      {text: 'I\'ll use my eye to help view the path ahead. Use it from the inventory to check any doors or suspicious objects out before you iteract with them.', subjects: [maeNeutral, wingerDiscomfort]},
+      {text: 'Okay..', subjects: [wingerDiscomfort, maeNeutral]}
+    ];
+
+    const dialogueRightHallUniquePov3Door1PreEye = [
+      {text: 'The handle on the door moves but alas it does not open. Bleh.'}
+    ];
+
+    const dialogueRightHallUniquePov3Door1EyeWarning = [
+      {text: 'Let me check if it\'s all clear first.', subjects: [maeNeutral]}
+    ];
+
+    const dialogueRightHallUniquePov3Door1EyeVersion = [
+      {text: 'Hmmm..', subjects: [maeConcentrateEye]},
+      {text: 'I don\'t sense whatever we just saw down these stairs.', subjects: [maeNeutralEye]},
+      {text: 'We should keep our guard up though for the area ahead.', subjects: [maeNeutral]},
+      {text: 'Got it.', subjects: [wingerNeutral, maeNeutral]}
+    ];
+
+    const dialogueRightHallUniqueSharedHoleEye = [
+      {text: 'Damn I really fucked up the wall didn\'t I?', subjects: [maeNeutral]},
+      {text: 'I mean it is an old building so it\'s probably already barley standing-', subjects: [wingerNeutral, maeNeutral]},
+      {text: 'Shut up dude I\'m so strong and cool you couldn\'t fathom causing the same amount of destruction as I just did.', subjects: [maeAngry, wingerNeutral]},
+      {text: 'I could pick you up by the scruff like a cat like animal control if I so choosed.', subjects: [wingerJudgement, maeAngry]},
+      {text: 'You\'re sooo mean to me >:p', subjects: [maeDiscomfort, wingerJudgement]}
+    ];
+
+    // hall A
+    const dialogueHallACenterCamera = [
+      {text: 'Yeesh, this hall looks even worse than the others with the dilapidation.', subjects: [wingerDisgust]}
+    ];
+
+    const dialogueHallApov1Door1 = [
+      {text: 'Nope. Locked'}
+    ];
+
+    const dialogueHallApov1Door2 = [
+      {text: 'Locked. This door\'s time is near'}
+    ];
+
+    const dialogueHallApov2Door1Locked = [
+      {text: 'Locked'}
+    ];
+
+    const dialogueHallApov2Door1Warning = [
+      {text: 'Dude I\'m getting real bad vibes from that door you should really not be messing with it.', subjects: [maeDiscomfort]},
+      {text: 'Nah I\'m gonna do it.', subjects: [wingerSmug, maeDiscomfort]}
+    ];
+
+    const dialogueHallApov2Door1Consequences = [
+      {text: 'You open the door and peek into the room, horrified at the unfathomable horrors that sit behind it'},
+      {text: 'The horrors were so terrifying actually that you blanked out the entire thing from your mind and didn\'t render it as a background'},
+      {text: 'Instead of exploring further you just close the door'},
+      {text: '...', subjects: [wingerDisgust]}
+    ];
+
+    const dialogueHallApov2Door1NoEntry = [
+      {text: 'No.', subjects: [maeNeutral]}
+    ];
+
+    const dialogueHallApov3Movies = [
+      {text: 'There is a single paper left on the bulletin board:'},
+      {text: '\"MOVIE NIGHT MAY 10TH IN ROOM 149\"'}
+    ];
+
+    const dialogueHallApov3Door1Locked = [
+      {text: 'Locked. A shame really'}
+    ];
+
+    const dialogueHallApov3Door1Check = [
+      {text: 'Hmmm..', subjects: [maeNeutralEye]},
+      {text: 'Okay it looks safe, you can go in.', subjects: [maeNeutralEye]}
+    ];
+
+    const dialogueHallApov3Door1Open = [
+      {text: 'You open the door and peek into the room'},
+      {text: 'Oh! So this must be where they kept all the chairs'}
+    ];
+
+    // living space A
+    const dialogueLivingSpaceACameraCenter = [
+      {text: 'Never gonna stay at another cheap hotel after this.', subjects: [wingerJudgement]}
+    ];
+
+    const dialogueLivingSpaceApov1Laptop = [
+      {text: 'This laptop has seen better days'}
+    ];
+
+    const dialogueLivingSpaceApov1LaptopEye = [
+      {text: 'Hey check it out, there\'s a card under here.', subjects: [maeNeutral]}
+    ];
+
+    // electrical
+    const dialogueElecCenterCamera = [
+      {text: 'Smells like corrosives.', subjects: [wingerNeutral]}
+    ];
+
+    const dialogueElecPov1FuseBoxNoFuse = [
+      {text: 'It looks like something should go in that empty slot.', subjects: [wingerNeutral]},
+      {text: 'Yeah stupid, this is a fuse box. We\'d need to put in another fuse to fix it.', subjects: [maeNeutral, wingerNeutral]},
+      {text: 'Oh yeah you\'re right.', subjects: [wingerNeutral, maeNeutral]}
+    ];
+
+    const dialogueElecPov1FuseBoxWithFuse = [
+      {text: 'You put the spare fuse into the fuse box'}
+    ];
+
+    const dialogueElecPov1FuseBoxPowerOn = [
+      {text: 'With the power on, there\'s no longer a need for fuses'}
+    ];
+
+
+    // === global variables ===
+    var textPrinted= 0;         // used to determine when to stop the text animation
+    var scriptSubjects = [];    // blank array to store the subjects of a text passage
+    var currentLocation = 0;    // used to keep track of where a multiple passage dialouge box is
+    var maxLength = 0;          // used to keep track of how long a single dialouge entry is
+    var textAddTimer = 48;      // how fast text in the text box scrolls by
+    var isHoldingItem = false;  // tracks wether the player is holding an item currently
+    var heldItem = '';          // current item being held
+    var beepVolume = 0;         // current volume of the beeping heard in living space C  
+    var doorwayTime = 450;      // speed that it takes to go through a regular door
+    var stairsTime = 2000;      // speed that it takes to take a stairwell
+
+    // flags
+    const flagTest = [true];        // for testing cutscene code
+    const flagItemDkey = [false];   // next few flags are for tracking if some specific items are in the players inventory
+    const flagItemAkey = [false];
+    const flagItemKeycard = [false];
+    const flagItemFuse = [false];
+    const flagItemEye = [false];                // this one is also used as a cutscene flag and general check for if you've seen the alabaster cutscene
+    const flagCutsceneGameStart = [true];       // cutscene that plays in the starting room
+    const flagCutsceneFirstBeep = [true];       // cutscene that plays in hall b
+    const flagCutsceneBoilerIntro = [true];     // cutscene that plays in boiler room
+    const flagCutsceneBoilerArm = [true];       // cutscene for encountering the arm
+    const flagCutsceneEnd = [true];             // cutscene for the end of the game
+    const flagArtifacts = [0];                  // flag to number the amount of manchester baby artifacts the player has encountered
+    const flagSequenceBreak = [false];          // check for if the player has seen the camera dialogue for the lower boiler room
+    const flagPowerOn = [false];                // becomes true when the fuse is returned
+    const flagDoorDiddler = [0];                // tracks how many times you fiddle with the only door in hall a pov2
+    const flagRoomLover = [0];                  // tracks the rooms which winger enjoys
+    const flagRightHallSafteyCheck = [false];   // check for saftey garbage
+
+
+    // === event listeners ===
+    // ui
+    inventoryButton.addEventListener('click', function() { // not using inventory logic because this has to be a toggleable button
+      if (isHoldingItem == true) {itemReturn()};
+      if (inventoryMenu.alignment == 'closed') {
+        inventoryMenu.style.top = '0px';
+        inventoryMenu.alignment = 'opened';
+
+      } else if (inventoryMenu.alignment == 'opened') {
+        inventoryMenu.style.top = '-110px';
+        inventoryMenu.alignment = 'closed';
+      };
+    });
+
+    // test screen transitions
+    screenTester.addEventListener('click', () => screenTransition(BGtestRoom, BGfeild));
+    screenReturnTest.addEventListener('click', () => screenTransition(BGfeild, BGtestRoom));
+    getToScene.addEventListener('click', () => screenTransition(BGtestRoom, BGscene, 1000));
+    getToScene.addEventListener('click', () => cutsceneHandler(flagTest, dialogueTestCutscene, 1000, true));
+
+    // test enviornment objects
+    imageTester.addEventListener("click", () => textboxLogic(dialougeImageTester, "clickMe"));
+    
+    feildSheep.addEventListener('click', function() {
+      if (isHoldingItem == false) {
+        textboxLogic(dialougeSheepTalk, 'feildSheep');
+
+      } else if (isHoldingItem == true) {
+        if (heldItem == inventorySatoriEye) {
+          textboxLogic(dialougeSheepSatori, 'feildSheep');
+          itemReturn;
+
+        } else if (heldItem == inventoryCamera) {
+          textboxLogic(dialougeSheepCamera, 'feildSheep');
+          itemReturn;
+
+        } else if (heldItem == holderTESTitem) {
+          textboxLogic(dialougeSheepApple, 'feildSheep');
+          holderTESTitem.style.visibility = 'hidden';
+          itemReturn;
+        };
+      };
+    });
+    TESTitem.addEventListener("click", () => inventoryPickup(TESTitem));
+
+    
+    // in game transitions/objects
+      // boiler
+    SceneBoilerLowerPovNavigatorBottom.addEventListener('click', () => screenTransition(BGboilerLowerPov, BGLhallPov1));
+    SceneBoilerLowerPovCameraBox.addEventListener('click', function() {
+      textboxLogic(dialogueBoilerPovLowCenterCamera);
+      flagSequenceBreak[0] = true;
+    });
+
+    SceneBoilerPov1NavigatorBottom.addEventListener('click', () => screenTransition(BGboilerPov1, BGtopHallHighPov1));
+    SceneBoilerPov1CameraBox.addEventListener('click', () => textboxLogic(dialogueBoilerCenterCamera));
+    SceneBoilerPov1Winger.addEventListener('click', function() {
+      if (flagArtifacts[0] == 0) {screenTransition(BGboilerPov1, BGboilerPov2); cutsceneHandler(flagCutsceneBoilerArm, dialogueBoilerPov1StandingWinger, 0, true); flagArtifacts[0]++}
+      else if (flagArtifacts[0] > 0) {screenTransition(BGboilerPov1, BGboilerPov2); cutsceneHandler(flagCutsceneBoilerArm, dialogueBoilerPov1StandingWingerAlt, 0, true); flagArtifacts[0]++};
+    }); // artifact flag check for cutscene function
+
+    SceneBoilerPov2NavigatorLeft.addEventListener('click', () => screenTransition(BGboilerPov2, BGboilerPov1));
+    SceneBoilerPov2CameraBox.addEventListener('click', () => textboxLogic(dialogueBoilerCenterCamera));
+    SceneBoilerPov2Key.addEventListener('click', function() {
+      inventoryPickup(SceneBoilerPov2Key);
+      flagItemDkey[0] = true;
+      SceneBoilerPov2NavigatorLeft.style = 'width: 100px; height: 710px; left: 5px; top: 5px;';
+      SceneBoilerPov1Winger.style.visibility = 'hidden';
+    });
+
+
+      // elec
+    SceneElecNavigatorBottom.addEventListener('click', () => screenTransition(BGelec, BGleftHallPov3, doorwayTime, sfxDoorEnter, function() {musicServer.pause(); musicAirConditoner.play();}));
+    SceneElecCameraBox.addEventListener('click', () => textboxLogic(dialogueElecCenterCamera));
+    SceneElecFuseBox.addEventListener('click', function() {
+      if (flagPowerOn[0] == true) {textboxLogic(dialogueElecPov1FuseBoxPowerOn)}
+      else if (heldItem == inventoryFuse) {textboxLogic(dialogueElecPov1FuseBoxWithFuse); flagPowerOn[0] = true}
+      else {textboxLogic(dialogueElecPov1FuseBoxNoFuse)};
+    });
+
+
+      // hall a
+    SceneHallApov1NavigatorBottom.addEventListener('click', () => screenTransition(BGhallApov1, BGhallApov2));
+    SceneHallApov1CameraBox.addEventListener('click', () => textboxLogic(dialogueHallACenterCamera));
+    SceneHallApov1Door1.addEventListener('click', function() {
+      if (flagItemAkey[0] == true) {screenTransition(BGhallApov1, BGlivingSpaceA, doorwayTime, sfxDoorEnter)}
+      else {textboxLogic(dialogueHallApov1Door1)};
+    });
+    SceneHallApov1Door2.addEventListener('click', function() {
+      if (flagItemAkey[0] == true) {screenTransition(BGhallApov1, BGleftHallPov3, doorwayTime, sfxDoorEnter, function() {musicHotel.pause(); musicAirConditoner.play();})}
+      else {textboxLogic(dialogueHallApov1Door2)};
+    });
+
+    SceneHallApov2NavigatorCenter.addEventListener('click', () => screenTransition(BGhallApov2, BGhallApov1));
+    SceneHallApov2NavigatorRight.addEventListener('click', () => screenTransition(BGhallApov2, BGhallApov3));
+    SceneHallApov2CameraBox.addEventListener('click', () => textboxLogic(dialogueHallACenterCamera));
+    SceneHallApov2Door1.addEventListener('click', function() {
+      if (isHoldingItem == true && heldItem == inventorySatoriEye) {
+        if (flagDoorDiddler[0] < 2) {
+          // play some unique text from mae
+        } else (textboxLogic(dialogueHallApov2Door1NoEntry));
+      } else {
+        if (flagPowerOn[0] == true && flagItemKeycard[0] == true) {
+          if (flagDoorDiddler[0] == 0) {textboxLogic(dialogueHallApov2Door1Warning); flagDoorDiddler[0]++}
+          else if (flagDoorDiddler[0] == 1) {textboxLogic(dialogueHallApov2Door1Consequences); flagDoorDiddler[0]++}
+          else if (flagDoorDiddler[0] == 2) {textboxLogic(dialogueHallApov2Door1NoEntry)};
+        }
+        else {textboxLogic(dialogueHallApov2Door1Locked)};
+      };
+    });
+
+    SceneHallApov3NavigatorCenter.addEventListener('click', () => screenTransition(BGhallApov3, BGhallApov2));
+    SceneHallApov3NavigatorBottom.addEventListener('click', () => screenTransition(BGhallApov3, BGrightHallPov3));
+    SceneHallApov3CameraBox.addEventListener('click', () => textboxLogic(dialogueHallACenterCamera));
+    SceneHallApov3Poster.addEventListener('click', () => textboxLogic(dialogueHallApov3Movies));
+    SceneHallApov3Door1.addEventListener('click', function() {
+      if (isHoldingItem == true && heldItem == inventorySatoriEye) {textboxLogic(dialogueHallApov3Door1Check)}
+      else {
+        if (flagPowerOn[0] == true && flagItemKeycard[0] == true) {textboxLogic(dialogueHallApov3Door1Open)}
+        else (textboxLogic(dialogueHallApov3Door1Locked));
+      };      
+    });
+
+
+      // hall b
+    var creditsCountdown = 13;
+    SceneHallBpov1NavigatorLeft.addEventListener('click', () => screenTransition(BGhallBpov1, BGhallBpov2, 0, undefined, function() {sfxLowPower.volume = 0.01}));
+    SceneHallBpov1NavigatorBottom.addEventListener('click', () => screenTransition(BGhallBpov1, BGLhallPov2, stairsTime, sfxDoorStairs, function() {sfxLowPower.pause(); musicHotel.pause(); musicAirConditoner.play();}));
+    SceneHallBpov1CameraBox.addEventListener('click', () => textboxLogic(dialogueHallBCenterCamera));
+    SceneHallBpov1Door1.addEventListener('click', function() {
+      if (flagItemKeycard[0] == true && flagPowerOn[0] == true) {
+        screenTransition(BGhallBpov1, BGcredits, doorwayTime, sfxDoorEnter, function() {musicHotel.pause(); sfxLowPower.pause();});  // screen transition into a black room
+        cutsceneHandler(flagCutsceneEnd, dialogueHallBpov1CdoorOpen, doorwayTime, true) // begin a cutscene where the two roominate on how dark it is before getting locked into the room
+        textBox.addEventListener('click', function creditsPlay() {
+          creditsCountdown--;
+          if (creditsCountdown == 0) {
+            sfxDoorEnter.play();
+            this.removeEventListener('click', creditsPlay);
+            setTimeout(function() {musicOutside.volume = 0.8; musicOutside.play()}, 6000);
+            setTimeout(function() {CCcredits.style.visibility = 'visible'}, 14000);
+            setTimeout(function() {CCcredits.style.visibility = 'hidden'; CCmoreCredits.style.visibility = 'visible';}, 22000);
+            setTimeout(function() {location.reload();}, 30000)
+          };          
+        }) // add an event listner to the text box to trigger the actual credits once the text box is over
+      } else {textboxLogic(dialogueHallBpov1Cdoor)};
+    });
+
+    SceneHallBpov2NavigatorCenter.addEventListener('click', () => screenTransition(BGhallBpov2, BGhallBpov3, 0, undefined, function() {sfxLowPower.volume = 0.005}));
+    SceneHallBpov2NavigatorBottom.addEventListener('click', () => screenTransition(BGhallBpov2, BGhallBpov1, 0, undefined, function() {sfxLowPower.volume = 0.02}));
+    SceneHallBpov2CameraBox.addEventListener('click', () => textboxLogic(dialogueHallBCenterCamera));
+    SceneHallBpov2Door1.addEventListener('click', function() {
+      if (flagItemDkey[0] == false) {textboxLogic(dialogueHallBpov2DdoorLocked)}
+      else {screenTransition(BGhallBpov2, BGlivingSpaceD, doorwayTime, sfxDoorEnter, function() {sfxLowPower.volume = 0.001;})};
+    }); // check for key d/e
+
+    SceneHallBpov3NavigatorLeft.addEventListener('click', () => screenTransition(BGhallBpov3, BGhallBpov2, 0, undefined, function() {sfxLowPower.volume = 0.01}));
+    SceneHallBpov3CameraBox.addEventListener('click', () => textboxLogic(dialogueHallBCenterCamera));
+    SceneHallBpov3Door1.addEventListener('click', () => screenTransition(BGhallBpov3, BGtopHallHighPov2, doorwayTime, sfxDoorEnter, function() {sfxLowPower.volume = 0; sfxLowPower.pause(); musicHotel.pause(); musicAirConditoner.play()}));
+
+
+      // l hall
+    var flagLhallRoomLoverTriggered = false;
+    var LHallSeenAt
+    SceneLHallPov1NavigatorRight.addEventListener('click', () => screenTransition(BGLhallPov1, BGLhallPov2));
+    SceneLHallPov1CameraBox.addEventListener('click', function() {
+      if (flagLhallRoomLoverTriggered == false) {flagLhallRoomLoverTriggered = true; LHallSeenAt = flagRoomLover[0]; flagRoomLover[0]++};
+
+      if (LHallSeenAt == 0) {textboxLogic(dialogueLHallCenterCamera)}
+      else if (LHallSeenAt > 0) {textboxLogic(dialogueLivingSpaceDCameraCenterDoorLover)};
+    }); // room lover flag check
+    SceneLhallPov1Door1.addEventListener('click', () => textboxLogic(dialogueLHallpov1Door1));
+    SceneLhallPov1Door2.addEventListener('click', () => screenTransition(BGLhallPov1, BGboilerLowerPov, doorwayTime, sfxDoorEnter));
+
+    SceneLHallPov2NavigatorLeft.addEventListener('click', () => screenTransition(BGLhallPov2, BGLhallPov1));
+    SceneLHallPov2NavigatorBottom.addEventListener('click', () => screenTransition(BGLhallPov2, BGleftHallPov2));
+    SceneLHallPov2CameraBox.addEventListener('click', function() {
+      if (flagLhallRoomLoverTriggered == false) {flagLhallRoomLoverTriggered = true; LHallSeenAt = flagRoomLover[0]; flagRoomLover[0]++};
+
+      if (LHallSeenAt == 0) {textboxLogic(dialogueLHallCenterCamera)}
+      else if (LHallSeenAt > 0) {textboxLogic(dialogueLivingSpaceDCameraCenterDoorLover)};
+    }); // room lover flag check; make sure that triggering the camera in both of these rooms doesn't make the unique dialogue appearrr
+    SceneLhallPov2Crate.addEventListener('click', function() {
+      if (flagItemEye[0] == false) {textboxLogic(dialogueLhallpov2Crate1)}
+      else if (flagItemEye[0] == true) {textboxLogic(dialogueLhallpov2Crate1PostEye)};
+    }); // different crate dialogue depending on if the player has the eye or not
+    SceneLhallPov2Door1.addEventListener('click', function() {
+      screenTransition(BGLhallPov2, BGhallBpov1, stairsTime, sfxDoorStairs, function() {sfxLowPower.loop = true; sfxLowPower.volume = 0.02; sfxLowPower.play(); musicAirConditoner.pause(); musicHotel.volume = 0.5; musicHotel.play()});
+      cutsceneHandler(flagCutsceneFirstBeep, dialogueHallBIntroCutscene, stairsTime, true);
+    }); // add cutscene function for entering hall b for the first time
+
+
+      // left hall
+    SceneLeftHallPov1NavigatorCenter.addEventListener('click', () => screenTransition(BGleftHallPov1, BGleftHallPov2));
+    SceneLeftHallPov1NavigatorLeft.addEventListener('click', () => screenTransition(BGleftHallPov1, BGtopHallLowPov2));
+    SceneLeftHallPov1CameraBox.addEventListener('click', () => textboxLogic(dialogueLeftHallCenterCamera));
+
+    SceneLeftHallPov2NavigatorRight.addEventListener('click', () => screenTransition(BGleftHallPov2, BGleftHallPov3));
+    SceneLeftHallPov2NavigatorBottom.addEventListener('click', () => screenTransition(BGleftHallPov2, BGleftHallPov1));
+    SceneLeftHallPov2CameraBox.addEventListener('click', () => textboxLogic(dialogueLeftHallCenterCamera));
+    SceneLeftHallPov2Door1.addEventListener('click', () => screenTransition(BGleftHallPov2, BGLhallPov2, doorwayTime, sfxDoorEnter));
+    SceneLeftHallPov2Door2.addEventListener('click', function() {
+      if (flagItemAkey[0] == false) { textboxLogic(dialogueLeftHallSharedDoor)}
+      else {screenTransition(BGleftHallPov2, BGhallApov1, doorwayTime, sfxDoorEnter, function() {musicHotel.volume = 0.5; musicHotel.play(); musicAirConditoner.pause();})};
+    }); // key a check
+
+    SceneLeftHallPov3NavigatorLeft.addEventListener('click', () => screenTransition(BGleftHallPov3, BGleftHallPov2));
+    SceneLeftHallPov3NavigatorBottom.addEventListener('click', () => screenTransition(BGleftHallPov3, BGleftHallPov1));
+    SceneLeftHallPov3CameraBox.addEventListener('click', () => textboxLogic(dialogueLeftHallCenterCamera));
+    SceneLeftHallPov3Door1.addEventListener('click', function() {
+      if (flagItemAkey[0] == false) { textboxLogic(dialogueLeftHallSharedDoor)}
+      else {screenTransition(BGleftHallPov3, BGhallApov1, doorwayTime, sfxDoorEnter, function() {musicHotel.volume = 0.5; musicHotel.play(); musicAirConditoner.pause();})};
+    }); // key a check
+    SceneLeftHallPov3Door2.addEventListener('click', () => screenTransition(BGleftHallPov3, BGelec, doorwayTime, sfxDoorEnter, function() {musicServer.volume = 0.3; musicServer.currentTime = 5; musicServer.play(); musicAirConditoner.pause();}));
+
+
+      // living spaces
+    SceneLivingSpaceANavigatorBottom.addEventListener('click', () => screenTransition(BGlivingSpaceA, BGhallApov1, doorwayTime, sfxDoorEnter));
+    SceneLivingSpaceACameraBox.addEventListener('click', () => textboxLogic(dialogueLivingSpaceACameraCenter));
+    //SceneLivingSpaceAcard.addEventListener('click', () => );
+    SceneLivingSpaceAfuses.addEventListener('click', function() {inventoryPickup(SceneLivingSpaceAfuses); flagItemFuse[0] = true;});
+    SceneLivingSpaceAlaptop.addEventListener('click', function() {
+      if (heldItem == inventorySatoriEye) {
+        textboxLogic(dialogueLivingSpaceApov1LaptopEye);
+        textBox.addEventListener('click', function cardPickup() {
+          inventoryPickup(SceneLivingSpaceAcard);
+          flagItemKeycard[0] = true;
+          this.removeEventListener('click', cardPickup);
+        });
+      }
+      else {textboxLogic(dialogueLivingSpaceApov1Laptop)};
+    }); // held item eye check to pickup the card
+
+    var flagLivingSpaceRoomLoverTriggered = false;
+    var LivingSpaceSeenAt
+    const LivingSpaceChairCountdown = [13];
+    SceneLivingSpaceDNavigatorLeft.addEventListener('click', () => screenTransition(BGlivingSpaceD, BGhallBpov2, doorwayTime, sfxDoorEnter, function() {sfxLowPower.volume = 0.02}));
+    SceneLivingSpaceDCameraBox.addEventListener('click', function() {
+      if (flagLivingSpaceRoomLoverTriggered == false) {flagLivingSpaceRoomLoverTriggered = true; LivingSpaceSeenAt = flagRoomLover[0]; flagRoomLover[0]++};
+
+      if (LivingSpaceSeenAt == 0) {textboxLogic(dialogueLHallCenterCamera)}
+      else if (LivingSpaceSeenAt > 0) {textboxLogic(dialogueLivingSpaceDCameraCenterDoorLover)};
+    }); // room lover flag check
+    SceneLivingSpaceDbed.addEventListener('click', () => textboxLogic(dialogueLivingSpaceDPov1Bed));
+    SceneLivingSpaceDchairA.addEventListener('click', function() {
+      if (heldItem == inventoryCamera) {
+        textboxLogic(dialogueLivingSpaceDPov1CouchCamera);
+
+        textBox.addEventListener('click', function chairMover() {
+          LivingSpaceChairCountdown[0]--
+          if (LivingSpaceChairCountdown == 0) {
+            SceneLivingSpaceDchairA.style.visibility = 'hidden';
+            SceneLivingSpaceDchairB.style = 'position: absolute; width: auto; height: auto; left: 921px; top: 372px;';
+            SceneLivingSpaceDdoor1.style = 'width: auto; height: auto; left: 696px; top: 366px;';
+            this.removeEventListener('click', chairMover);
+          };
+        }); // make the chair go to chair b after the very last dialogue box is exited
+      } else {textboxLogic(dialogueLivingSpaceDPov1CouchNothing)};
+    }); // held item check
+    // SceneLivingSpaceDchairB.addEventListener('click', () => );
+    SceneLivingSpaceDdoor1.addEventListener('click', () => screenTransition(BGlivingSpaceD, BGrightHallPov4, 0, undefined, function() {sfxLowPower.volume = 0; sfxLowPower.pause()}));
+
+
+      // right hall
+    SceneRightHallPov1NavigatorBottom.addEventListener('click', function() {
+      if (flagItemEye[0] == false) {screenTransition(BGrightHallPov1, BGrightHallPov2, 0, undefined, function() {musicHotel.pause()})}
+      else {screenTransition(BGrightHallPov1, BGrightHallPov2)};
+    });
+    SceneRightHallPov1CameraBox.addEventListener('click', () => textboxLogic(dialogueRightHallUniqueCameraCenter));
+    SceneRightHallPov1Door1.addEventListener('click', function() {
+      if (flagItemEye[0] == false) {textboxLogic(dialogueRightHallUniquePov1Door1)}
+      else {textboxLogic(dialogueHallApov2Door1Locked)};
+    });
+    SceneRightHallPov1Key.addEventListener('click', function() {
+      inventoryPickup(SceneRightHallPov1Key);
+      flagItemAkey[0] = true;
+    });
+
+    SceneRightHallPov2NavigatorCenter.addEventListener('click', () => screenTransition(BGrightHallPov2, BGrightHallPov3));
+    SceneRightHallPov2NavigatorBottom.addEventListener('click', () => screenTransition(BGrightHallPov2, BGrightHallPov1));
+    SceneRightHallPov2CameraBox.addEventListener('click', () => textboxLogic(dialogueRightHallUniqueCameraCenter));
+    SceneRightHallPov2AlabasterPeek.addEventListener('click', function() {
+      inventorySatoriEye.style.visibility = 'visible';
+      flagItemEye[0] = true;
+      sfxDoorSlam.play();
+      this.style.visibility = 'hidden';
+      dimmer.style.visibility = 'visible';
+      SceneRightHallPov2NavigatorCenter.style = 'width: 210px; height: 210px; left: 372px; top: 185px;';
+      SceneRightHallPov2NavigatorBottom.style = 'width: 600px; height: 70px; left: 180px; top: 645px;';
+
+      setTimeout( function() {
+        textboxLogic(dialogueRightHallUniquePov2DoorScare);
+        musicHotel.play();
+      }, 1200);
+    }); // works!
+
+    SceneRightHallPov3NavigatorRight.addEventListener('click', () => screenTransition(BGrightHallPov3, BGrightHallPov4));
+    SceneRightHallPov3Door1.addEventListener('click', function() {
+      if (flagItemEye[0] == false && flagRightHallSafteyCheck[0] == false) {textboxLogic(dialogueRightHallUniquePov3Door1PreEye)}
+      else {
+        if (flagRightHallSafteyCheck[0] == false) {
+          if (heldItem == inventorySatoriEye) {textboxLogic(dialogueRightHallUniquePov3Door1EyeVersion); flagRightHallSafteyCheck[0] = true} // refuse to open door if it hasn't been checked
+          else {textboxLogic(dialogueRightHallUniquePov3Door1EyeWarning)};  // play check dialogue if it hasn't been checked and the eye is equipped
+        }
+        else {screenTransition(BGrightHallPov3, BGhallApov3, stairsTime, sfxDoorStairs)};  // take player to next room like normal if the door's already been checked
+      };
+    }); // saftey check garbage
+    SceneRightHallPov3Door2.addEventListener('click', function() {
+      if (heldItem == inventorySatoriEye) {textboxLogic(dialogueRightHallUniqueSharedHoleEye)}
+      else {screenTransition(BGrightHallPov3, BGlivingSpaceD, 0, undefined, function() {sfxLowPower.volume = 0.001})};
+    }); // held item eye check
+    SceneRightHallPov3CameraBox.addEventListener('click', () => textboxLogic(dialogueRightHallUniqueCameraCenter));
+
+    SceneRightHallPov4NavigatorCenter.addEventListener('click', () => screenTransition(BGrightHallPov4, BGrightHallPov1));
+    SceneRightHallPov4Door1.addEventListener('click', function() {
+      if (heldItem == inventorySatoriEye) {textboxLogic(dialogueRightHallUniqueSharedHoleEye)}
+      else {screenTransition(BGrightHallPov4, BGlivingSpaceD, 0, undefined, function() {sfxLowPower.volume = 0.001})};
+    }); // held item eye check
+    SceneRightHallPov4CameraBox.addEventListener('click', () => textboxLogic(dialogueRightHallUniqueCameraCenter));
+
+
+      // stairs a
+    SceneStairsAexitCameraBox.addEventListener('click', () => textboxLogic(dialogueStairsAExitCenterCamera));
+    SceneStairsAexitDoor1.addEventListener('click', () => textboxLogic(dialogueStairsAExitPov1Door));
+    SceneStairsAexitDoor2.addEventListener('click', () => screenTransition(BGstairsAexit, BGtopHallLowPov1, doorwayTime, sfxDoorEnter));
+    
+    SceneStairsApov1NavigatorRight.addEventListener('click', () => screenTransition(BGstairsApov1, BGstairsApov2));
+    SceneStairsApov1CameraBox.addEventListener('click', () => textboxLogic(dialougeStairsACenterCamera));
+    SceneStairsApov1Door1.addEventListener('click', () => textboxLogic(dialogueHallApov2Door1Locked));
+
+    SceneStairsA2pov1NavigatorRight.addEventListener('click', () => screenTransition(BGstairsA2pov1, BGstairsA2pov2));
+    SceneStairsA2pov1CameraBox.addEventListener('click', () => textboxLogic(dialougeStairsACenterCamera));
+    SceneStairsA2pov1Door1.addEventListener('click', () => screenTransition(BGstairsA2pov1, BGstairsAexit, doorwayTime, sfxDoorEnter));
+
+    SceneStairsApov2NavigatorLeft.addEventListener('click', () => screenTransition(BGstairsApov2, BGstairsApov1));
+    SceneStairsApov2CameraBox.addEventListener('click', () => textboxLogic(dialougeStairsACenterCamera));
+    SceneStairsApov2stairs.addEventListener('click', () => textboxLogic(dialogueStairsAPov2Stairs));
+    SceneStairsApov2door1.addEventListener('click', () => screenTransition(BGstairsApov2, BGstairsA2pov2, stairsTime, sfxDoorStairs));
+
+    SceneStairsA2pov2NavigatorLeft.addEventListener('click', () => screenTransition(BGstairsA2pov2, BGstairsA2pov1));
+    SceneStairsA2pov2CameraBox.addEventListener('click', () => textboxLogic(dialougeStairsACenterCamera));
+    SceneStairsA2pov2stairs.addEventListener('click', () => screenTransition(BGstairsA2pov2, BGstairsApov2, stairsTime, sfxDoorStairs));
+
+
+      // top hall
+    var flagTopHallHighPovArtifactTrigger = false;
+    SceneTopHallHighPov1NavigatorBottom.addEventListener('click', () => screenTransition(BGtopHallHighPov1, BGtopHallHighPov2));
+    SceneTopHallHighPov1CameraBox.addEventListener('click', function() {
+      if (flagSequenceBreak[0] == false) {textboxLogic(dialogueTophallUpCenterCamera)}
+      else if (flagSequenceBreak[0] == true) {textboxLogic(dialogueTophallUpCenterCameraSeenBoiler)};
+    }); // sequence break flag check
+    SceneTopHallHighPov1Door1.addEventListener('click', function() {
+      screenTransition(BGtopHallHighPov1, BGboilerPov1, doorwayTime, sfxDoorEnter);
+      cutsceneHandler(flagCutsceneBoilerIntro, dialogueBoilerPov1IntroCutscene, doorwayTime, true);
+    }); // intro cutscene to boiler
+    SceneTopHallHighPov1Rail.addEventListener('click', () => {textboxLogic(dialogueTophallHighpov1Rail)});
+
+    SceneTopHallHighPov2NavigatorCenter.addEventListener('click', () => screenTransition(BGtopHallHighPov2, BGtopHallHighPov1));
+    SceneTopHallHighPov2NavigatorBottom.addEventListener('click', () => screenTransition(BGtopHallHighPov2, BGhallBpov3, doorwayTime, sfxDoorEnter, function() {sfxLowPower.volume = 0.005; sfxLowPower.play(); musicHotel.play(); musicAirConditoner.pause()}));
+    SceneTopHallHighPov2CameraBox.addEventListener('click', () => textboxLogic(dialogueTophallUpCenterCameraAlt));
+    SceneTopHallHighPov2Eye.addEventListener('click', function() {
+      artifactSeen = flagArtifacts[0]
+      if (flagTopHallHighPovArtifactTrigger == false) {flagTopHallHighPovArtifactTrigger = true; flagArtifacts[0]++};
+
+      if (artifactSeen == 0) {textboxLogic(dialogueTophallHighpov2EyeFirst)}
+      else if (artifactSeen > 0) {textboxLogic(dialogueTophallHighpov2EyeSecond)};
+    }); // different eye logic depending on number of artifacts seen
+
+    SceneTopHallLowPov1NavigatorLeft.addEventListener('click', () => screenTransition(BGtopHallLowPov1, BGtopHallLowPov2));
+    SceneTopHallLowPov1CameraBox.addEventListener('click', () => textboxLogic(dialogueTophallCenterCamera));
+    SceneTopHallLowPov1Door1.addEventListener('click', () => screenTransition(BGtopHallLowPov1, BGstairsAexit, doorwayTime, sfxDoorEnter));
+    SceneTopHallLowPov1Rail.addEventListener('click', () => textboxLogic(dialogueTophallLowpov1Rail));
+
+    SceneTopHallLowPov2NavigatorRight.addEventListener('click', () => screenTransition(BGtopHallLowPov2, BGtopHallLowPov1));
+    SceneTopHallLowPov2CameraBox.addEventListener('click', () => textboxLogic(dialogueTophallCenterCamera));
+    SceneTopHallLowPov2Door1.addEventListener('click', () => textboxLogic(dialogueTophallLowpov2Door));
+    SceneTopHallLowPov2Door2.addEventListener('click', () => screenTransition(BGtopHallLowPov2, BGleftHallPov1, doorwayTime, sfxDoorEnter));
+
+
+
+
+    // inventory items
+    holderTESTitem.addEventListener('click', () => itemSelect(holderTESTitem, event));
+
+    inventorySatoriEye.addEventListener('click', () => itemSelect(inventorySatoriEye, event));
+    inventoryCamera.addEventListener('click', () => itemSelect(inventoryCamera, event));
+    inventoryCamera.addEventListener('click', () => cameraBoxHandler(true));
+    inventoryKeyA.addEventListener('click', () => itemSelect(inventoryKeyA, event));
+    inventoryKeyE.addEventListener('click', () => itemSelect(inventoryKeyE, event));
+    inventoryNote.addEventListener('click', () => itemSelect(inventoryNote, event));
+    inventoryKeycard.addEventListener('click', () => itemSelect(inventoryKeycard, event));
+    inventoryFuse.addEventListener('click', () => itemSelect(inventoryFuse, event));
+
+
+    // main menu
+    MMbutton1.onmouseenter = function() {
+      MMbutton1.style.cursor = 'pointer';
+      MMhighlight1.style.opacity = '100';
+      MMnewGame.style.filter = 'brightness(0%)';
+      MMnewGame.style.left = '150px';
+      sfxMMhover.play();
+    };
+
+    MMbutton1.onmouseleave = function() {
+      MMbutton1.style.cursor = 'default';
+      MMhighlight1.style.opacity = '0';
+      MMnewGame.style.filter = 'brightness(100%)';
+      MMnewGame.style.left = '110px';
+    };
+
+    MMbutton1.addEventListener('click', function() {sfxMMselect.play(); screenTransition(BGmainMenu, BGintroCutscene, 2000, undefined, function() {
+      musicMM.pause();
+    })});
+
+    MMbutton2.onmouseenter = function() {
+      MMbutton2.style.cursor = 'pointer';
+      MMhighlight2.style.opacity = '100';
+      MMexit.style.filter = 'brightness(0%)';
+      MMexit.style.left = '150px';
+      sfxMMhover.play();
+    };
+
+    MMbutton2.onmouseleave = function() {
+      MMbutton2.style.cursor = 'default';
+      MMhighlight2.style.opacity = '0';
+      MMexit.style.filter = 'brightness(100%)';
+      MMexit.style.left = '110px';
+    };
+
+    MMbutton2.addEventListener('click', function() {location.reload()});
+
+    SceneIntroTextDump.addEventListener('click', () => screenTransition(BGintroCutscene, BGstairsApov2, 100, undefined, function() {
+      inventoryMenu.style.visibility = 'visible';
+      musicAirConditoner.volume = 0.2;
+      musicAirConditoner.play();
+    }));
+    SceneIntroTextDump.addEventListener('click', () => cutsceneHandler(flagCutsceneGameStart, dialogueStairsAIntroCutscene, 100, true));
+
+
+    // === functions ===
+    // inventory logic
+    function inventoryLogic(operation) {
+      if (isHoldingItem == true) {itemReturn()};
+      if (operation == 'open' && inventoryMenu.alignment == 'closed') {
+        inventoryMenu.style.top = '0px';
+        inventoryMenu.alignment = 'opened';
+
+      } else if (operation == 'close' && inventoryMenu.alignment == 'opened') {
+        inventoryMenu.style.top = '-110px';
+        inventoryMenu.alignment = 'closed';
+      };
+    };
+
+    // rewrite of textPrompt, the function responsible for managing the textbox
+    function textboxLogic(textPassage) {
+      // makes the dimmer and text box visible
+      textBox.style.visibility = 'visible';
+      dimmer.style.visibility = 'visible';
+      dimmer.style.opacity = '0.18';
+
+      // setting up variables
+      maxLength = textPassage.length;
+      textTotal = textPassage[currentLocation].text.length;
+      scriptSpeaker = 'default';
+      speakerNoise = '';
+
+      // image handling
+      if (textPassage[currentLocation].subjects !== undefined) {
+        // setting scriptSubjects to all the character images present for this location
+        scriptSubjects = textPassage[currentLocation].subjects;
+        scriptSubjects.forEach(function(scriptImage) {
+          if (scriptSubjects[0] == scriptImage) { // first character entry is always assumed to be the speaker
+            scriptImage.style.visibility = 'visible';
+            scriptImage.style.filter = 'brightness(100%)';
+            scriptSpeaker = scriptImage.suite; // sets variable for the suite of the person talking, used to determine what sound to play while the text is printing
+
+          } else {
+            scriptImage.style.visibility = 'visible';
+            scriptImage.style.filter = 'brightness(70%)';
+          };
+
+          // checks for when an image goes away and hides right in the scene
+          if (currentLocation > 0 && textPassage[Math.abs(currentLocation - 1)].subjects !== undefined) {
+            prevSubjects = textPassage[Math.abs(currentLocation - 1)].subjects;
+            prevSubjects.forEach(function(scriptImage) {
+              if (scriptSubjects.includes(scriptImage) == false) {
+                scriptImage.style.visibility = 'hidden';
+                scriptImage.style.filter = 'brightness(100%)';
+              };
+            });
+          };
+        });
+      } else if (textPassage[currentLocation].subjects == undefined && currentLocation > 0) { // REALLY shitty appended code that hides all the previous images mid dialouge(now fixed to not crash the game when multiple instances of text entries with no subjects are used)
+        prevSubjects = textPassage[Math.abs(currentLocation - 1)].subjects;
+        if (prevSubjects != undefined) {
+          prevSubjects.forEach(function(scriptImage) {
+            scriptImage.style.visibility = 'hidden';
+            scriptImage.style.filter = 'brightness(100%)';
+          });
+        };
+      };
+
+      // close inventory if it's open
+      inventoryLogic('close');
+
+      // decides what voice sound to use before text can be added
+      if (scriptSpeaker == 'default' || scriptSpeaker == undefined) { speakerNoise = sfxTalkDefault }
+      else if (scriptSpeaker == 'mae') { speakerNoise = sfxTalkMae }
+      else if (scriptSpeaker == 'winger') { speakerNoise = sfxTalkWinger }
+      else if (scriptSpeaker == 'alabaster') { speakerNoise = sfxTalkAlabaster }
+      else if (scriptSpeaker == 'baby') { speakerNoise = sfxTalkBaby };
+
+      // begins playing the text printing animation
+      var id = setInterval(textAdd, textAddTimer);
+      function textAdd() {
+        if (textPrinted == textTotal){ // end of animation instructions
+          clearInterval(id); // stops animation
+          lastCharacter = textPassage[currentLocation].text.charAt(textPrinted - 1); // gets the last character of the text passage
+          textPrinted = 0; // resets print length
+          currentLocation += 1; // advances a step in text passage array
+          console.log(lastCharacter);
+
+          if (lastCharacter == ',' || lastCharacter == '.') {
+            textAddTimer -= 100;
+            console.log('textAddTimer: ' + textAddTimer);
+            console.log('END IN DOT. -100 DECREASE');
+          }; // fixes the timer if the last character was a . or ,
+
+          // calls for either a function to put a next button or exit button depending on if there's more dialouge
+          if (currentLocation == maxLength) { printExit() } else { printNext() };
+
+        } else { // animation instructions
+          prevCharacter = textPassage[currentLocation].text.charAt(Math.abs(textPrinted - 1));
+          newCharacter = textPassage[currentLocation].text.charAt(textPrinted);
+
+          if (textPrinted == 0 && newCharacter == '.') { // fixes bug for messages that begin with a dot such as "..." which makes the text add timer go into the negatives
+            clearInterval(id);
+            console.log('FIRST CHARACTER DOT. 100 INCREASE');
+            textContent.innerHTML += newCharacter;
+            textAddTimer += 100;
+            textPrinted += 1;
+            speakerNoise.currentTime = 0;
+            speakerNoise.play();
+            id = setInterval(textAdd, textAddTimer);
+
+          } else if ((newCharacter == "," || newCharacter == '.') && (prevCharacter == "," || prevCharacter == '.')) { // does NOT increase textAddTimer if there are multiple dots or , in a row
+            console.log('MULTIPLE DOTS: NO INCREASE');
+            textContent.innerHTML += newCharacter;
+            textPrinted += 1;
+            speakerNoise.currentTime = 0;
+            speakerNoise.play();
+
+          } else if (newCharacter == "," || newCharacter == '.') { // adds a pause between printing characters when theres a comma or period
+            clearInterval(id);
+            console.log('NEW DOT. 100 INCREASE');
+            textContent.innerHTML += newCharacter;
+            textAddTimer += 100;
+            textPrinted += 1;
+            speakerNoise.currentTime = 0;
+            speakerNoise.play();
+            id = setInterval(textAdd, textAddTimer);
+
+          } else if (prevCharacter == "," || prevCharacter == '.') { // resets textAddTimer after the pause
+            clearInterval(id);
+            console.log('TIMER RESET: -100 DECREASE');
+            textContent.innerHTML += newCharacter;
+            textAddTimer -= 100;
+            textPrinted += 1;
+            speakerNoise.currentTime = 0;
+            speakerNoise.play();
+            id = setInterval(textAdd, textAddTimer);
+
+          } else { // regular animation
+            textContent.innerHTML += newCharacter;
+            textPrinted += 1;
+            speakerNoise.currentTime = 0;
+            speakerNoise.play();
+          };
+        };
+      };
+
+      function printNext() {
+        scriptSubjects = [];
+        
+        textAdvanceButton.style.visibility = "visible";
+        textBox.style.cursor = 'pointer';
+        textBox.addEventListener("click", function nextHandler() {
+          textContent.innerHTML = "";
+          textboxLogic(textPassage);
+          textAdvanceButton.style.visibility = "hidden";
+          textBox.style.cursor = null;
+          this.removeEventListener("click", nextHandler);
+        });
+      };
+
+      function printExit() {
+        maxLength = 0;
+        currentLocation = 0;
+
+        textAdvanceButton.style.visibility = "visible";
+        textBox.style.cursor = 'pointer';
+        textBox.addEventListener("click", function exitHandler() { // exit button instruction
+          textContent.innerHTML = "";
+          textBox.style.visibility = "hidden";
+
+          scriptSubjects.forEach(function(scriptImage) {
+            scriptImage.style.visibility = 'hidden';
+          });
+          scriptSubjects = [];
+          
+          dimmer.addEventListener("transitionend", visibilityHandler);
+          dimmer.style.opacity = "0";
+
+          textAdvanceButton.style.visibility = "hidden";
+          textBox.style.cursor = null;
+          this.removeEventListener("click", exitHandler);
+        });
+      };
+
+      // hides objects after they've fully transitioned from any effect
+      function visibilityHandler() {
+        this.style.visibility = "hidden";
+        this.removeEventListener("transitionend", visibilityHandler);
+      };
+
+      // checks for image alingment to determine what side to animate the image coming in from
+      function alignmentCheck(x) {
+        if (x.alignment == 'right') {
+          x.style.right = '40px';
+          x.style.bottom = '210px';
+        } else {
+          x.style.right = '480px';
+          x.style.bottom = '210px';
+        };
+      };
+
+      // resets alignment of character images
+      function alignmentReset(x) {
+        if (x.alignment == 'right') {
+          x.style.right = '0';
+          x.style.bottom = '200px';
+        } else {
+          x.style.right = '530px';
+          x.style.bottom = '200px';
+        };
+      };
+    };
+  
+    // code for picking up items
+    function inventoryPickup(whoCalled) {
+      // removal
+      this.removeEventListener('click', () => inventoryPickup);
+      
+      // temporary variables
+      holderMirror = whoCalled.mirrorItem;
+      var centerX = whoCalled.offsetLeft + (whoCalled.width / 2);
+      var centerY = whoCalled.offsetTop + (whoCalled.height / 2);
+      var mirrorCenterX = holderMirror.offsetLeft + (holderMirror.width / 2);
+      var mirrorCenterY = holderMirror.offsetTop + (holderMirror.height / 2);
+
+      // turns the game item version into a pellet
+      whoCalled.style.width = null;
+      whoCalled.style.height = null;
+      whoCalled.style.left = centerX + 'px';
+      whoCalled.style.top = centerY + 'px';
+      whoCalled.classList.remove('gameItem');
+      whoCalled.classList.add('itemPellet');
+      
+
+      // opens inventory and waits a little to play the pellet animation
+      inventoryLogic('open');
+      setTimeout(function() {
+        whoCalled.style.transition = 'top 0.4s ease-in, left 0.4s ease-in';
+        whoCalled.style.left = mirrorCenterX + 'px';
+        whoCalled.style.top = mirrorCenterY + 'px';
+
+        setTimeout(function() {
+          holderMirror.style.visibility = 'visible';
+          whoCalled.style.visibility = 'hidden';
+          setTimeout(() => inventoryLogic('close'), 325); // fixed the timer
+        }, 400);
+      }, 350);
+    };
+  
+    // mouse follower function
+    function mouseFollower(ev, x, centerX) {
+      x.style.transform = 'translateY(' + (ev.pageY - 15) + 'px)';
+      x.style.transform += 'translateX(' + (ev.pageX - centerX.left + 8) + 'px)';
+    };
+
+    // itemSelect is for grabbing items from the inventory and attaching them to the mouse
+    function itemSelect(whoCalled, ev) {
+      this.removeEventListener('click', () => itemSelect);
+      if (isHoldingItem == false) { // shrink inventory item and make it follower the position of the mouse
+        whoCalled.classList.remove('inventoryItem');
+        whoCalled.classList.add('itemGrabbed');
+        var itemX = whoCalled.getBoundingClientRect();
+
+        whoCalled.style.transform = 'translateY(' + (ev.pageY - 15) + 'px)';
+        whoCalled.style.transform += 'translateX(' + (ev.pageX - itemX.left + 8) + 'px)';
+        document.addEventListener('mousemove', function mouseHandler(event) {
+          if (heldItem == false) {this.removeEventListener('mousemove', mouseHandler, false)
+          } else { mouseFollower(event, whoCalled, itemX) }; // jank bullshit i had to do to get the event listner to remove itself
+        }, false);
+
+        isHoldingItem = true;
+        heldItem = whoCalled;
+        sfxInventoryClick.play();
+      };
+    };
+
+    // return items back to inventory
+    function itemReturn() {
+      if (isHoldingItem == true) {
+        heldItem.style.transform = null;
+        heldItem.classList.remove('itemGrabbed');
+        heldItem.classList.add('inventoryItem');
+        isHoldingItem = false;
+        heldItem = '';
+        cameraBoxHandler(false);
+        sfxInventoryDeclick.play();
+      };
+    };
+  
+    // screen transitions
+    function screenTransition(oldRoom, newRoom, time, sound, func) {
+      inventoryLogic('close');
+      itemReturn;
+      if (time == undefined) {time = 0};
+
+      dimmer.style.visibility = 'visible';
+      dimmer.style.opacity = 1;
+      if (sound != undefined) {sound.play()};
+      setTimeout(function() {
+        oldRoom.style.visibility = 'hidden';
+        newRoom.style.visibility = 'visible';
+        currentRoom = newRoom;
+
+        setTimeout(function() {
+          dimmer.style.opacity = 0;
+          setTimeout(function() {dimmer.style.visibility = 'hidden';}, 300);
+        }, time);
+      }, 300);
+
+      if (func != undefined) {setTimeout(func, time)};
+    };
+  
+    // cutscene handler
+    function cutsceneHandler(flag, playScene, time, intro) {
+      if (flag[0] == true) {
+        if (time == undefined) {time = 0};
+        if (intro == true) {time += 650};
+        flag[0] = false;
+
+        setTimeout(function() {
+          textboxLogic(playScene);
+          dimmer.style.opacity = '0.18';
+        }, time);
+      };
+    };
+
+    // stupid awful miserable dumb fuck function for the dumb camera gimmic
+    function cameraBoxHandler(state) {
+      var currentCameraBox = '';
+
+      if (currentRoom == BGboilerLowerPov) {currentCameraBox = SceneBoilerLowerPovCameraBox}
+      else if (currentRoom == BGboilerPov1) {currentCameraBox = SceneBoilerPov1CameraBox}
+      else if (currentRoom == BGboilerPov2) {currentCameraBox = SceneBoilerPov2CameraBox}
+      else if (currentRoom == BGelec) {currentCameraBox = SceneElecCameraBox}
+      else if (currentRoom == BGhallApov1) {currentCameraBox = SceneHallApov1CameraBox}
+      else if (currentRoom == BGhallApov2) {currentCameraBox = SceneHallApov2CameraBox}
+      else if (currentRoom == BGhallApov3) {currentCameraBox = SceneHallApov3CameraBox}
+      else if (currentRoom == BGhallBpov1) {currentCameraBox = SceneHallBpov1CameraBox}
+      else if (currentRoom == BGhallBpov2) {currentCameraBox = SceneHallBpov2CameraBox}
+      else if (currentRoom == BGhallBpov3) {currentCameraBox = SceneHallBpov3CameraBox}
+      else if (currentRoom == BGLhallPov1) {currentCameraBox = SceneLHallPov1CameraBox}
+      else if (currentRoom == BGLhallPov2) {currentCameraBox = SceneLHallPov2CameraBox}
+      else if (currentRoom == BGleftHallPov1) {currentCameraBox = SceneLeftHallPov1CameraBox}
+      else if (currentRoom == BGleftHallPov2) {currentCameraBox = SceneLeftHallPov2CameraBox}
+      else if (currentRoom == BGleftHallPov3) {currentCameraBox = SceneLeftHallPov3CameraBox}
+      else if (currentRoom == BGlivingSpaceA) {currentCameraBox = SceneLivingSpaceACameraBox}
+      else if (currentRoom == BGlivingSpaceD) {currentCameraBox = SceneLivingSpaceDCameraBox}
+      else if (currentRoom == BGrightHallPov1) {currentCameraBox = SceneRightHallPov1CameraBox}
+      else if (currentRoom == BGrightHallPov2) {currentCameraBox = SceneRightHallPov2CameraBox}
+      else if (currentRoom == BGrightHallPov3) {currentCameraBox = SceneRightHallPov3CameraBox}
+      else if (currentRoom == BGrightHallPov4) {currentCameraBox = SceneRightHallPov4CameraBox}
+      else if (currentRoom == BGstairsAexit) {currentCameraBox = SceneStairsAexitCameraBox}
+      else if (currentRoom == BGstairsApov1) {currentCameraBox = SceneStairsApov1CameraBox}
+      else if (currentRoom == BGstairsApov2) {currentCameraBox = SceneStairsApov2CameraBox}
+      else if (currentRoom == BGstairsA2pov1) {currentCameraBox = SceneStairsA2pov1CameraBox}
+      else if (currentRoom == BGstairsA2pov2) {currentCameraBox = SceneStairsA2pov2CameraBox}
+      else if (currentRoom == BGtopHallHighPov1) {currentCameraBox = SceneTopHallHighPov1CameraBox}
+      else if (currentRoom == BGtopHallHighPov2) {currentCameraBox = SceneTopHallHighPov2CameraBox}
+      else if (currentRoom == BGtopHallLowPov1) {currentCameraBox = SceneTopHallLowPov1CameraBox} 
+      else if (currentRoom == BGtopHallLowPov2) {currentCameraBox = SceneTopHallLowPov2CameraBox};
+
+      if (state == true) { currentCameraBox.style.visibility = 'visible' }
+      else if (state == false) { currentCameraBox.style.visibility = 'hidden' };
+    };
+  </script>
+</body>
+</html>

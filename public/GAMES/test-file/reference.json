@@ -1,0 +1,129 @@
+{
+    "characters": {
+        "winger": {
+            "sounds": {},
+
+            "graphics": {
+                "root": "character images",
+
+                "angry": "wingerAngry.png",
+                "confused": "wingerConfusion.png",
+                "discomfort": "wingerDiscomfort.png",
+                "disgust": "wingerDisgust.png",
+                "happy": "wingerHappy.png",
+                "judge": "wingerJudgement.png",
+                "look-away": "wingerLookAway.png",
+                "neutral":"wingerNeutral.png",
+                "scared":"wingerScared.png",
+                "sleep":"wingerSleep.png",
+                "smug":"wingerSmug.png"
+            }
+        },
+        "mae": {
+            "sound": {},
+
+            "graphics": {
+                "root":"character images",
+                "angry": "maeAngry.png",
+                "confused": "maeConfusion.png",
+                "discomfort": "maeDiscomfort.png",
+                "disgust": "maeDisgust.png",
+                "happy": "maeHappy.png",
+                "judge": "maeJudgement.png",
+                "look-away": "maeLookAway.png",
+                "neutral":"maeNeutral.png",
+                "scared":"maeScared.png",
+                "sleep":"maeSleep.png",
+                "smug":"maeSmug.png"
+            }
+        }
+    },
+
+    "screens": {
+        "main-menu": {
+            "data": {
+                "structure": {
+                    "overlay": {
+                        "element": "img",
+                        "graphic": "overlay",
+                        "style": ""
+                    },
+                    "button1": {
+                        "element": "div",
+                        "class": ["scene-object", "main-menu-button"],
+                        "style": "top: 395px",
+                        "children": {
+                            "highlight": {
+                                "element": "img",
+                                "graphic": "highlight",
+                                "style": ""
+                            },
+
+                            "txtNG": {
+                                "element": "img",
+                                "graphic": "txtNG",
+                                "class": ["scene-object", "main-menu-button"],
+                                "style": ""
+                            }
+                        }
+                    },
+                    "button2": {
+                        "element": "div",
+                        "class": ["scene-object", "main-menu-button"],
+                        "style": "top: 437px;",
+                        "children": {
+                            "highlight": {
+                                "element": "img",
+                                "graphic": "highlight",
+                                "style": ""
+                            },
+
+                            "txtNG": {
+                                "element": "img",
+                                "graphic": "txtExit",
+                                "class": ["scene-object", "main-menu-button"],
+                                "style": ""
+                            }
+                        }
+                    }
+                }
+            },
+
+            "graphics": {
+                "root": "ui/main menu assetes",
+                "background": "backgrounds/space filler.png",
+
+                "overlay": "MMoverlay.png",
+                "highlight": "MMhighlight_X0_Y389.png",
+                "txtNG": "MMnewGame_X110_Y401.png",
+                "txtExit": "MMexit_X110_Y434.png"
+            }
+        },
+
+        "cutscene-intro": {
+            "data": {
+                "intro-text": "The year is 2032. The thriving city of New Repro in the present stands as a landmark to the advancement of modern technology, a hub where creatives and collaborators work feverishly together to continue pushing the boundaries of what's possible. Old age magic redefined by new age scientific thought, conceptions are toyed with and become fluid as ideas change and build upon themselves. Streets flood with foot traffic and carbon emissions, opportunity and conflict presenting themselves to its denizens like virtual particles. Deep underground beneath the streets and skyscrapers and activity above lie ancient structures of vast tunnels and forgotten architecture, writhing and churning away, carrying pathogens and secrets within its caverns. People in this city sometimes get lost and disappear into these tunnels, as if swallowed up by the earth itself.<br><br>This is a tale about two of these people"
+            },
+
+            "graphics": {
+                "root": "backgrounds",
+                "background":"space filler.png"
+            }
+        },
+
+        "stairs-a-pov-2": {
+            "graphics": {
+                "root": "backgrounds/stairs a pov2",
+
+                "background": "BGstairsApov2.png",
+                "stairs": "SceneStairsA2pov2stairs_X124_Y247.png",
+                "door": "SceneStairsApov2door1_X806_Y144.png"
+            }
+        }
+    },
+
+    "audio": {
+        "sfx": {},
+        "music": {}
+    }
+}
