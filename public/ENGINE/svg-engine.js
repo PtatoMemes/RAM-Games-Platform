@@ -34,6 +34,13 @@ function gameScreen(givenScreen) {
     this.children = {};
 
     this.appendScreen = () => {
+        // adding the room specific stylesheet
+        ScreenStyle = document.createElement('link');
+        ScreenStyle.id = "currentScreenStyle";
+        ScreenStyle.rel = "stylesheet";
+        ScreenStyle.href = `${gameDirectory}/${dataReference.screens[givenScreen].data.style}`;
+        document.head.appendChild(ScreenStyle);
+
         Object.keys(this.children).forEach((newKey) => {
             if (newKey == "background") {
                 elemGamespace.style.background = `url("${this.children.background}")`;

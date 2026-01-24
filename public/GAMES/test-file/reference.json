@@ -42,6 +42,8 @@
     "screens": {
         "main-menu": {
             "data": {
+                "style": "backgrounds/main-menu.css",
+
                 "structure": {
                     "overlay": {
                         "element": "img",

@@ -1,17 +1,4 @@
-/* should be used to outline very general styling rules and pseudo elements like :hover or anims */
-:root {
-    /* palette */
-    --c-color-generic: blue;
-}
-
-/* named */
-#GAMESPACE { position: relative }
-
-.scene-object { position: absolute }
-
-/* main menu */
-/* moved into its own file */
-/* .main-menu-button {
+.main-menu-button {
     cursor: pointer;
 }
 
@@ -34,4 +21,4 @@
 .main-menu-button:hover img:last-child {
     left: 150px;
     filter: brightness(0);
-} */
+}
